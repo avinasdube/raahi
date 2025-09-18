@@ -1,7 +1,8 @@
-// Main router
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+import authRouter from "./auth.routes.js";
 
-// ...import and use other routers
+const router = Router();
 
-module.exports = router;
+router.use("/auth", authRouter);
+
+export default router;
