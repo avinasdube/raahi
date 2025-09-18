@@ -1,20 +1,17 @@
-// importing axios
 import axios from "axios";
-
-//importing constants for api base url and endpoints
 import { API_BASE_URL, API_ENDPOINTS } from "../utils/constants.js";
 
-// creating an instance of axios with baseURL
+// Axios instance
 const API = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // enable credentials with each request/response
+  withCredentials: true,
   headers: {
-    "Content-Type": "application/json", // Default content type for requests
-    // 'Authorization': 'Bearer YOUR_ACCESS_TOKEN', // Default authorization header
+    "Content-Type": "application/json",
   },
 });
 
-// exporting function with api get/post requests and customized parameters
+// API helpers
 export const signup = (inputs) => API.post(`${API_ENDPOINTS.signup}`, inputs);
 export const login = (inputs) => API.post(`${API_ENDPOINTS.login}`, inputs);
 export const logout = () => API.get(`${API_ENDPOINTS.logout}`);
+export const currentUser = () => API.get(`${API_ENDPOINTS.me}`);
