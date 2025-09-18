@@ -6,7 +6,7 @@ import HotelCard from "../components/HotelCard";
 import Navbar from "../components/Navbar";
 import { hotels as seed } from "../data/hotels";
 
-const Hotels = () => {
+const Hotels = ({ embedded = false }) => {
   // Expand mock data to look like a richer list (memoized)
   const base = useMemo(
     () => [...seed, ...seed.map((h, i) => ({ ...h, id: h.id + "x" + i }))],
@@ -121,8 +121,12 @@ const Hotels = () => {
 
   return (
     <>
-      <Navbar />
-      <main className="container pt-24 md:pt-28 pb-10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
+      {!embedded && <Navbar />}
+      <main
+        className={`container ${
+          embedded ? "pt-0" : "pt-24 md:pt-28"
+        } pb-10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6`}
+      >
         <FiltersSidebar
           selectedPopular={selectedPopular}
           onTogglePopular={togglePopular}
@@ -237,7 +241,7 @@ const Hotels = () => {
           </div>
         </section>
       </main>
-      <Footer />
+      {!embedded && <Footer />}
     </>
   );
 };
