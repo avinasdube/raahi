@@ -45,7 +45,7 @@ const data = [
   },
 ];
 
-export default function Marketplace() {
+export default function Marketplace({ embedded = false }) {
   const [q, setQ] = useState("");
   const [type, setType] = useState("All");
   const [city, setCity] = useState("All");
@@ -61,8 +61,12 @@ export default function Marketplace() {
 
   return (
     <>
-      <Navbar />
-      <main className="container pt-24 md:pt-28 pb-10 space-y-6">
+      {!embedded && <Navbar />}
+      <main
+        className={`container ${
+          embedded ? "pt-0" : "pt-24 md:pt-28"
+        } pb-10 space-y-6`}
+      >
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
           <h1 className="text-2xl md:text-3xl font-extrabold">
             Tourism Marketplace
@@ -135,7 +139,7 @@ export default function Marketplace() {
           </div>
         </section>
       </main>
-      <Footer />
+      {!embedded && <Footer />}
     </>
   );
 }
