@@ -27,13 +27,13 @@ const Home = () => (
       <div className="container pb-10 pt-28 md:pt-36 text-left text-white">
         <Reveal>
           <h1 className="max-w-3xl text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
-            Over 174,000 hotels and homes across 35+ countries
+            60+ stays across 6 Indian cities
           </h1>
         </Reveal>
         <Reveal delay={120}>
           <p className="mt-2 max-w-2xl text-white/90">
-            Find stays you love — from budget-friendly rooms to premium hotels —
-            across India and beyond.
+            Discover affordable, clean, and well-located stays — from budget
+            rooms to boutique hotels — across India.
           </p>
         </Reveal>
       </div>
@@ -78,14 +78,14 @@ const Home = () => (
       <div className="container grid md:grid-cols-2 gap-6 md:gap-8 items-center">
         <Reveal className="rounded-3xl bg-white border border-slate-200 p-6 shadow-card">
           <h2 className="text-2xl font-bold mb-3">
-            There's an OYO around. Always.
+            There’s a Raahi stay nearby. Always.
           </h2>
           <p className="text-slate-600 mb-5">
-            More Destinations. More Ease. More Affordable.
+            More cities. Simple booking. Always affordable.
           </p>
           <div className="grid grid-cols-2 gap-6 md:gap-10">
-            <Stat num="35+" label="Countries" />
-            <Stat num="174,000+" label="Hotels & Homes" />
+            <Stat num="6" label="Cities" />
+            <Stat num="60+" label="Hotels" />
           </div>
         </Reveal>
         <Reveal

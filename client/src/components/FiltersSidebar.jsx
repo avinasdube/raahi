@@ -8,10 +8,10 @@ export default function FiltersSidebar({
   onClear,
 }) {
   const collections = [
-    "Family OYOs",
+    "Family stays",
     "Your friendly neighbourhood stay",
-    "For Group Travellers",
-    "Near Airport",
+    "For group travellers",
+    "Near airport",
     "Local IDs accepted",
   ];
   const popular = [

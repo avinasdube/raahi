@@ -11,7 +11,7 @@ export default function HotelCard({ hotel }) {
             className="w-full h-full object-cover"
           />
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-            Super OYO
+            Raahi Select
           </div>
         </div>
         <div className="p-4 md:p-5 flex flex-col gap-2">
