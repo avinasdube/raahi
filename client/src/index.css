@@ -1,9 +1,11 @@
 @import "tailwindcss";
+/* Modern, elegant professional font */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
 /* Brand variables */
 :root {
   --brand: #ff5a36; /* accent from earlier theme to keep consistency */
-  --bg: #f4f6fb;
+  --bg: white;
 }
 
 /* Base resets using plain CSS to avoid relying on @apply */
@@ -13,7 +15,8 @@ html {
 body {
   background: var(--bg);
   color: #0f172a;
-  font-family: Inter, system-ui, Segoe UI, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, Segoe UI, Arial,
+    sans-serif;
   margin: 0;
 }
 
