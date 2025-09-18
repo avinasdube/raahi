@@ -1,0 +1,29 @@
+.features {
+  background: #fafbfc;
+  padding: 3rem 2rem 2rem 2rem;
+  text-align: center;
+}
+.features__list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.feature {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 1.5rem 1.2rem;
+  max-width: 320px;
+  min-width: 220px;
+  text-align: left;
+}
+.feature__title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+.feature__desc {
+  color: #444;
+  font-size: 1.05rem;
+}
