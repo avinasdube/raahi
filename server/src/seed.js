@@ -12,6 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import Crowd from "./models/Crowd.js";
 import Currency from "./models/Currency.js";
 import Hotel from "./models/Hotel.js";
+import POI from "./models/POI.js";
 import User from "./models/User.js";
 import Weather from "./models/Weather.js";
 
@@ -37,6 +38,7 @@ async function seed() {
     Crowd.deleteMany({}),
     Currency.deleteMany({}),
     Hotel.deleteMany({}),
+    POI.deleteMany({}),
     User.deleteMany({}), // Remove all users, but do not re-seed
   ]);
 
@@ -126,22 +128,206 @@ async function seed() {
     "Lemon Tree",
     "Fortune",
   ];
+  // City center coordinates for a basic geo distribution
+  const cityCenters = {
+    Agra: { lat: 27.1767, lng: 78.0081 },
+    Varanasi: { lat: 25.3176, lng: 82.9739 },
+    Manali: { lat: 32.2396, lng: 77.1887 },
+    Jaipur: { lat: 26.9124, lng: 75.7873 },
+    Goa: { lat: 15.2993, lng: 74.124 },
+  };
   for (let i = 0; i < 100; i++) {
     const city = faker.helpers.arrayElement(selectedCities);
     const hotelName = `${faker.helpers.arrayElement(
       hotelBrands
     )} ${city} Hotel`;
+    const center = cityCenters[city];
+    // jitter within ~5km
+    const latOffset = faker.number.float({
+      min: -0.045,
+      max: 0.045,
+      precision: 0.0001,
+    });
+    const lngOffset = faker.number.float({
+      min: -0.045,
+      max: 0.045,
+      precision: 0.0001,
+    });
     hotelDocs.push({
       name: hotelName,
       location: city,
       price: faker.number.int({ min: 1200, max: 12000 }),
       rating: faker.number.float({ min: 2, max: 5, precision: 0.1 }),
       available: faker.datatype.boolean(),
+      image: faker.image.urlPicsumPhotos({ width: 1200, height: 800 }),
+      amenities: faker.helpers.arrayElements(
+        [
+          "Reception",
+          "Free Wifi",
+          "Power backup",
+          "AC",
+          "CCTV",
+          "Parking",
+          "Elevator",
+          "Restaurant",
+        ],
+        faker.number.int({ min: 3, max: 6 })
+      ),
+      reviews: faker.number.int({ min: 50, max: 1200 }),
+      badge: faker.helpers.arrayElement(["Good", "Very Good", "Excellent"]),
+      socialProof: `${faker.number.int({
+        min: 3,
+        max: 30,
+      })} people booked this hotel today`,
+      coords: {
+        lat: Number((center.lat + latOffset).toFixed(6)),
+        lng: Number((center.lng + lngOffset).toFixed(6)),
+      },
     });
   }
   await Hotel.insertMany(hotelDocs);
 
-  console.log("✅ Inserted 100 dummy docs for each model!");
+  // 5. Seed POI Data (Points of Interest)
+  const poiDocs = [
+    // Jaipur POIs
+    {
+      name: "Hawa Mahal",
+      city: "Jaipur",
+      time: "9:00 AM",
+      tip: "Best light in the morning.",
+      category: "historical",
+    },
+    {
+      name: "City Palace",
+      city: "Jaipur",
+      time: "11:00 AM",
+      tip: "Combo ticket with Jantar Mantar.",
+      category: "historical",
+    },
+    {
+      name: "Amber Fort",
+      city: "Jaipur",
+      time: "3:00 PM",
+      tip: "Stay for sunset views.",
+      category: "historical",
+    },
+
+    // Goa POIs
+    {
+      name: "Baga Beach",
+      city: "Goa",
+      time: "10:00 AM",
+      tip: "Water sports open by mid-morning.",
+      category: "beach",
+    },
+    {
+      name: "Fort Aguada",
+      city: "Goa",
+      time: "1:00 PM",
+      tip: "Great sea views and photos.",
+      category: "historical",
+    },
+    {
+      name: "Candolim",
+      city: "Goa",
+      time: "5:30 PM",
+      tip: "Beach shacks for sunset snacks.",
+      category: "beach",
+    },
+
+    // Delhi POIs
+    {
+      name: "India Gate",
+      city: "Delhi",
+      time: "9:30 AM",
+      tip: "Walk the lawns if weather permits.",
+      category: "historical",
+    },
+    {
+      name: "Qutub Minar",
+      city: "Delhi",
+      time: "12:00 PM",
+      tip: "Carry water; open courtyards.",
+      category: "historical",
+    },
+    {
+      name: "Humayun's Tomb",
+      city: "Delhi",
+      time: "3:30 PM",
+      tip: "Beautiful Mughal gardens.",
+      category: "historical",
+    },
+
+    // Additional POIs for other cities
+    {
+      name: "Taj Mahal",
+      city: "Agra",
+      time: "8:00 AM",
+      tip: "Visit early to avoid crowds.",
+      category: "historical",
+    },
+    {
+      name: "Agra Fort",
+      city: "Agra",
+      time: "11:00 AM",
+      tip: "Explore the Mughal architecture.",
+      category: "historical",
+    },
+    {
+      name: "Fatehpur Sikri",
+      city: "Agra",
+      time: "2:00 PM",
+      tip: "Ghost city with beautiful palaces.",
+      category: "historical",
+    },
+
+    {
+      name: "Kashi Vishwanath Temple",
+      city: "Varanasi",
+      time: "6:00 AM",
+      tip: "Morning aarti is spectacular.",
+      category: "religious",
+    },
+    {
+      name: "Ganges River",
+      city: "Varanasi",
+      time: "7:00 AM",
+      tip: "Boat ride at sunrise.",
+      category: "religious",
+    },
+    {
+      name: "Sarnath",
+      city: "Varanasi",
+      time: "10:00 AM",
+      tip: "Where Buddha gave his first sermon.",
+      category: "religious",
+    },
+
+    {
+      name: "Rohtang Pass",
+      city: "Manali",
+      time: "9:00 AM",
+      tip: "Stunning mountain views.",
+      category: "nature",
+    },
+    {
+      name: "Solang Valley",
+      city: "Manali",
+      time: "11:00 AM",
+      tip: "Adventure activities available.",
+      category: "nature",
+    },
+    {
+      name: "Hadimba Temple",
+      city: "Manali",
+      time: "3:00 PM",
+      tip: "Ancient wooden temple.",
+      category: "religious",
+    },
+  ];
+  await POI.insertMany(poiDocs);
+
+  console.log("✅ Inserted dummy data for all models!");
   mongoose.disconnect();
 }
 
