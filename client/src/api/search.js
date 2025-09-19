@@ -1,6 +1,6 @@
 import { getHotels } from "./api";
 
-// This is an API facade so form components can reuse it later
+// Always try real backend; gracefully fall back to local mock if it fails
 export async function searchHotels({
   q,
   checkIn,
@@ -8,11 +8,21 @@ export async function searchHotels({
   rooms = 1,
   guests = 1,
 }) {
-  // Use backend when configured, otherwise fallback to local mock.
-  const useBackend = !!import.meta.env.VITE_API_BASE_URL;
-  if (!useBackend) {
+  try {
+    const { data } = await getHotels({ q });
+    return {
+      items: Array.isArray(data) ? data : [],
+      meta: {
+        total: Array.isArray(data) ? data.length : 0,
+        q,
+        checkIn,
+        checkOut,
+        rooms,
+        guests,
+      },
+    };
+  } catch {
     const { hotels } = await import("../data/hotels");
-    // naive filter by name or location
     const filtered = hotels.filter(
       (h) =>
         h.name.toLowerCase().includes((q || "").toLowerCase()) ||
@@ -23,16 +33,4 @@ export async function searchHotels({
       meta: { total: filtered.length, q, checkIn, checkOut, rooms, guests },
     };
   }
-  const { data } = await getHotels({ q });
-  return {
-    items: Array.isArray(data) ? data : [],
-    meta: {
-      total: Array.isArray(data) ? data.length : 0,
-      q,
-      checkIn,
-      checkOut,
-      rooms,
-      guests,
-    },
-  };
 }
