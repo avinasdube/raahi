@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import agraImg from "../assets/Agra India.JPG";
 import goa from "../assets/goa.jpg";
 import hawamahal from "../assets/hawamahal.jpg";
 import manali from "../assets/manalii.jpg";
-import stays from "../assets/stays.jpg";
 import mkp from "../assets/marketplace.jpg";
+import stays from "../assets/stays.jpg";
 import varanasi from "../assets/varanasi.jpg";
 import Footer from "../components/Footer";
 import MapView from "../components/MapView";
@@ -30,10 +31,14 @@ const SectionHeading = ({ title, subtitle, action }) => (
 );
 
 const Home = () => {
+  const [city, setCity] = useState("");
+  const [dates, setDates] = useState("");
+  const [guests, setGuests] = useState("1 Room, 1 Guest");
   const navigate = useNavigate();
-  const quickCities = ["Jaipur", "Delhi", "Goa", "Mumbai", "Varanasi", "Agra"];
+  const quickCities = ["Jaipur", "Agra", "Varanasi", "Goa", "Manali"];
 
-  const goExplore = (tab) => navigate(`/explore?tab=${tab}`);
+  const goExplore = (tab) =>
+    navigate(tab === "market" ? "/explore/market" : "/explore/stays");
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -70,19 +75,37 @@ const Home = () => {
             </Reveal>
             <div className="mt-6 max-w-4xl">
               <Reveal>
-                <SearchBar onSearch={() => {}} />
+                <SearchBar
+                  onSearch={() => {}}
+                  valueQ={city}
+                  valueDates={dates}
+                  valueGuests={guests}
+                  onChangeQ={setCity}
+                  onChangeDates={setDates}
+                  onChangeGuests={setGuests}
+                />
               </Reveal>
             </div>
             <Reveal delay={180}>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div
+                className="mt-4 flex flex-wrap gap-2 items-center"
+                role="group"
+                aria-label="Quick city picks"
+              >
                 {quickCities.map((c) => (
-                  <Link
+                  <button
                     key={c}
-                    to={`/search?q=${encodeURIComponent(c)}`}
-                    className="text-xs md:text-sm px-3 py-1.5 rounded-full border border-white/30 bg-white/10 hover:bg-white/20"
+                    type="button"
+                    onClick={() => setCity(c)}
+                    className={`text-xs md:text-sm px-3 py-1.5 rounded-full border ${
+                      city === c
+                        ? "border-white bg-white text-slate-900"
+                        : "border-white/30 bg-white/10 hover:bg-white/20 text-white"
+                    }`}
+                    aria-pressed={city === c}
                   >
                     {c}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </Reveal>
@@ -233,9 +256,7 @@ const Home = () => {
               ].map((c, i) => (
                 <Reveal key={c} delay={i * 90}>
                   <Link
-                    to={`/explore?tab=stays&collections=${encodeURIComponent(
-                      c
-                    )}`}
+                    to={`/explore/stays?collections=${encodeURIComponent(c)}`}
                     className="px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-white text-sm"
                   >
                     {c}
@@ -255,7 +276,7 @@ const Home = () => {
                 subtitle="Explore popular cities across India"
                 action={
                   <Link
-                    to="/explore"
+                    to="/explore/stays"
                     className="text-[var(--brand)] font-semibold"
                   >
                     View all
