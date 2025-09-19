@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import AIAssistant from "../components/AIAssistant";
+import { useEffect, useMemo, useState } from "react";
+import { getCrowd, getPOIs, getWeather, postAIPlan } from "../api/api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { showError, showSuccess } from "../utils/toast";
 
 const interestsList = [
   "Historical sites",
@@ -13,84 +14,80 @@ const interestsList = [
   "Festivals & culture",
 ];
 
-const samplePOIs = {
-  Jaipur: [
-    { name: "Hawa Mahal", time: "9:00 AM", tip: "Best light in the morning." },
-    {
-      name: "City Palace",
-      time: "11:00 AM",
-      tip: "Combo ticket with Jantar Mantar.",
-    },
-    { name: "Amber Fort", time: "3:00 PM", tip: "Stay for sunset views." },
-  ],
-  Goa: [
-    {
-      name: "Baga Beach",
-      time: "10:00 AM",
-      tip: "Water sports open by mid-morning.",
-    },
-    {
-      name: "Fort Aguada",
-      time: "1:00 PM",
-      tip: "Great sea views and photos.",
-    },
-    {
-      name: "Candolim",
-      time: "5:30 PM",
-      tip: "Beach shacks for sunset snacks.",
-    },
-  ],
-  Delhi: [
-    {
-      name: "India Gate",
-      time: "9:30 AM",
-      tip: "Walk the lawns if weather permits.",
-    },
-    {
-      name: "Qutub Minar",
-      time: "12:00 PM",
-      tip: "Carry water; open courtyards.",
-    },
-    {
-      name: "Humayun's Tomb",
-      time: "3:30 PM",
-      tip: "Beautiful Mughal gardens.",
-    },
-  ],
-};
-
 export default function Planner() {
   const [city, setCity] = useState("Jaipur");
   const [budget, setBudget] = useState(20000);
   const [days, setDays] = useState(3);
   const [season, setSeason] = useState("Winter");
   const [interests, setInterests] = useState(["Historical sites"]);
-  const [aiPromptKey, setAiPromptKey] = useState(0);
-  const [aiPrompt, setAiPrompt] = useState("");
   const [aiOutput, setAiOutput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
+  // Data state
+  const [weatherData, setWeatherData] = useState([]);
+  const [crowdData, setCrowdData] = useState([]);
+  // Hotels are fetched server-side for AI; client may not need full list here
+  // Hotels are fetched on the server for AI planning
+  const [poisData, setPoisData] = useState([]);
+
+  // Fetch data on mount and when city changes
+  useEffect(() => {
+    // Prefill from Trips if available
+    try {
+      const raw = localStorage.getItem("raahi.plannerPrefill");
+      if (raw) {
+        const pre = JSON.parse(raw);
+        if (pre.city) setCity(pre.city);
+        if (Number.isFinite(pre.budget)) setBudget(pre.budget);
+        if (Number.isFinite(pre.days)) setDays(pre.days);
+        if (pre.season) setSeason(pre.season);
+        if (Array.isArray(pre.interests) && pre.interests.length)
+          setInterests(pre.interests);
+        localStorage.removeItem("raahi.plannerPrefill");
+      }
+    } catch {
+      // ignore prefill errors
+    }
+
+    const fetchData = async () => {
+      try {
+        const [weatherRes, crowdRes, poisRes] = await Promise.all([
+          getWeather(),
+          getCrowd(),
+          getPOIs(city),
+        ]);
+        setWeatherData(weatherRes.data);
+        setCrowdData(crowdRes.data);
+        setPoisData(poisRes.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
+  }, [city]);
 
   const weather = useMemo(() => {
-    // Mock weather by season
-    const map = {
-      Summer: "Hot (34–40°C)",
-      Monsoon: "Humid with showers",
-      Winter: "Pleasant (12–24°C)",
-    };
-    return map[season] || "Pleasant";
-  }, [season]);
+    if (!weatherData || weatherData.length === 0) return "Loading...";
+    const cityWeather = weatherData.find(
+      (w) => w.city?.toLowerCase() === city.toLowerCase()
+    );
+    return cityWeather
+      ? `${cityWeather.condition} (${cityWeather.temperature}°C)`
+      : "No live data for this city";
+  }, [weatherData, city]);
 
   const crowd = useMemo(() => {
-    // Mock crowd density by season and city popularity
-    const popular = ["Goa", "Jaipur", "Manali", "Mumbai"];
-    const base = popular.includes(city) ? 3 : 2; // 1 low, 3 high
-    const seasonal = season === "Winter" ? 3 : season === "Monsoon" ? 2 : 3;
-    const level = Math.min(3, Math.max(1, Math.round((base + seasonal) / 2)));
-    return ["Low", "Medium", "High"][level - 1];
-  }, [city, season]);
+    if (!crowdData || crowdData.length === 0) return "Loading...";
+    const placeCrowd = crowdData.find(
+      (c) => c.place?.toLowerCase() === city.toLowerCase()
+    );
+    return placeCrowd ? placeCrowd.crowd_level : "No live data for this city";
+  }, [crowdData, city]);
 
   const plan = useMemo(() => {
     // Simple heuristic-based plan combining POIs + interests and daily budget pacing
-    const pois = samplePOIs[city] || [];
+    const pois = poisData;
     const dailyBudget = Math.round(budget / days);
     const suggested = Array.from({ length: days }, (_, d) => ({
       day: d + 1,
@@ -108,22 +105,90 @@ export default function Planner() {
           : "Mix taxis with metros; pre-book tickets",
     }));
     return { dailyBudget, items: suggested };
-  }, [city, budget, days, interests]);
+  }, [budget, days, interests, poisData]);
 
   const toggleInterest = (i) =>
     setInterests((prev) =>
       prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]
     );
 
-  const composePrompt = () => {
-    const i = interests.length ? interests.join(", ") : "general sightseeing";
-    return (
-      `Plan a detailed, day-by-day itinerary for ${days} days in ${city} during ${season}. ` +
-      `Total trip budget is ₹${budget}. Focus on: ${i}. ` +
-      `Include morning/afternoon/evening suggestions, local transport tips, ` +
-      `approx costs where helpful, and 2-3 dining ideas each day. Keep it crisp and practical. ` +
-      `Use Indian context, timings, and cultural notes where relevant.`
-    );
+  // composePrompt removed in server-side AI path
+
+  const formatPlan = (plan) => {
+    if (!plan) return "";
+    const lines = [];
+    if (plan.summary) lines.push(`Summary: ${plan.summary}`);
+    if (Array.isArray(plan.hotels) && plan.hotels.length) {
+      lines.push("\nSuggested Hotels:");
+      plan.hotels.forEach((h) =>
+        lines.push(`- ${h.name} — ₹${h.price}/night, ${h.location}`)
+      );
+    }
+    if (Array.isArray(plan.days)) {
+      plan.days.forEach((d) => {
+        lines.push(`\nDay ${d.day}:`);
+        lines.push(`  Morning: ${d.morning}`);
+        lines.push(`  Afternoon: ${d.afternoon}`);
+        lines.push(`  Evening: ${d.evening}`);
+        if (d.transport) lines.push(`  Transport: ${d.transport}`);
+        if (Array.isArray(d.tips) && d.tips.length)
+          lines.push(`  Tips: ${d.tips.join("; ")}`);
+      });
+    }
+    if (Array.isArray(plan.warnings) && plan.warnings.length) {
+      lines.push("\nWarnings:");
+      plan.warnings.forEach((w) => lines.push(`- ${w}`));
+    }
+    return lines.join("\n");
+  };
+
+  const requestServerAI = async () => {
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const payload = {
+        city,
+        startDate: new Date().toISOString().slice(0, 10),
+        days,
+        travelers: 2,
+        interests,
+        budget,
+        constraints: [],
+        season,
+      };
+      const { data } = await postAIPlan(payload);
+      setAiOutput(formatPlan(data));
+    } catch (err) {
+      console.error("AI plan error", err);
+      setAiError("Failed to generate plan. Please try again.");
+      showError("Failed to generate AI plan. Please try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const saveTrip = () => {
+    const STORAGE_KEY = "raahi.trips";
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      city,
+      budget,
+      days,
+      season,
+      interests,
+      weather,
+      crowd,
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(list) ? [record, ...list] : [record];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      showSuccess("Trip saved to Trips", "Saved");
+    } catch {
+      showError("Failed to save trip");
+    }
   };
 
   return (
@@ -141,80 +206,135 @@ export default function Planner() {
         </header>
         <section className="grid md:grid-cols-[340px_1fr] gap-6">
           <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1">City</label>
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg h-10 px-3"
-              >
-                {["Jaipur", "Delhi", "Goa", "Mumbai", "Udaipur", "Manali"].map(
-                  (c) => (
-                    <option key={c}>{c}</option>
-                  )
-                )}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">
-                Budget (₹ total)
-              </label>
-              <input
-                type="number"
-                value={budget}
-                onChange={(e) => setBudget(Number(e.target.value))}
-                className="w-full border border-slate-300 rounded-lg h-10 px-3"
-              />
-              <div className="text-xs text-slate-500 mt-1">
-                Daily approx: ₹{plan.dailyBudget}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            <form className="space-y-4" aria-labelledby="trip-setup-heading">
+              <h2 id="trip-setup-heading" className="text-base font-semibold">
+                Trip setup
+              </h2>
               <div>
-                <label className="block text-sm font-semibold mb-1">Days</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={days}
-                  onChange={(e) => setDays(Number(e.target.value))}
-                  className="w-full border border-slate-300 rounded-lg h-10 px-3"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">
-                  Season
+                <label
+                  htmlFor="city-select"
+                  className="block text-sm font-semibold mb-1"
+                >
+                  City
                 </label>
                 <select
-                  value={season}
-                  onChange={(e) => setSeason(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg h-10 px-3"
+                  id="city-select"
+                  name="city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="select-control w-full"
                 >
-                  {["Winter", "Summer", "Monsoon"].map((s) => (
-                    <option key={s}>{s}</option>
+                  {[
+                    "Jaipur",
+                    "Delhi",
+                    "Goa",
+                    "Mumbai",
+                    "Udaipur",
+                    "Manali",
+                  ].map((c) => (
+                    <option key={c}>{c}</option>
                   ))}
                 </select>
               </div>
-            </div>
-            <div>
-              <div className="text-sm font-semibold mb-2">Interests</div>
-              <div className="flex flex-wrap gap-2">
-                {interestsList.map((i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggleInterest(i)}
-                    className={`px-3 py-2 rounded-lg text-sm border ${
-                      interests.includes(i)
-                        ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)]"
-                        : "bg-white border-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {i}
-                  </button>
-                ))}
+              <div>
+                <label
+                  htmlFor="budget-input"
+                  className="block text-sm font-semibold mb-1"
+                >
+                  Budget (₹ total)
+                </label>
+                <input
+                  id="budget-input"
+                  name="budget"
+                  type="number"
+                  min={0}
+                  value={budget}
+                  onChange={(e) => setBudget(Number(e.target.value))}
+                  className="w-full border border-slate-300 rounded-lg h-10 px-3"
+                />
+                <div className="text-xs text-slate-500 mt-1">
+                  Daily approx: ₹{plan.dailyBudget}
+                </div>
               </div>
-            </div>
-            <div className="rounded-xl bg-[var(--brand)]/5 border border-[var(--brand)]/30 p-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="days-input"
+                    className="block text-sm font-semibold mb-1"
+                  >
+                    Days
+                  </label>
+                  <input
+                    id="days-input"
+                    name="days"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={days}
+                    onChange={(e) => setDays(Number(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg h-10 px-3"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="season-select"
+                    className="block text-sm font-semibold mb-1"
+                  >
+                    Season
+                  </label>
+                  <select
+                    id="season-select"
+                    name="season"
+                    value={season}
+                    onChange={(e) => setSeason(e.target.value)}
+                    className="select-control w-full"
+                  >
+                    {["Winter", "Summer", "Monsoon"].map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <fieldset>
+                <legend className="text-sm font-semibold mb-2">
+                  Interests
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {interestsList.map((i) => {
+                    const selected = interests.includes(i);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={selected}
+                        aria-pressed={selected}
+                        onClick={() => toggleInterest(i)}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            e.preventDefault();
+                            toggleInterest(i);
+                          }
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/40 ${
+                          selected
+                            ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)]"
+                            : "bg-white border-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            </form>
+
+            <div
+              className="rounded-xl bg-[var(--brand)]/5 border border-[var(--brand)]/30 p-3 text-sm"
+              role="status"
+              aria-live="polite"
+            >
               <div>
                 <span className="font-semibold">Weather:</span> {weather}
               </div>
@@ -244,14 +364,21 @@ export default function Planner() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      const p = composePrompt();
-                      setAiPrompt(p);
-                      setAiPromptKey((k) => k + 1);
-                    }}
+                    onClick={requestServerAI}
                     className="h-11 px-4 rounded-xl bg-[var(--brand)] text-white"
+                    disabled={aiLoading}
+                    aria-busy={aiLoading}
+                    aria-describedby="ai-status"
                   >
-                    Ask AI to refine plan
+                    {aiLoading ? "Generating…" : "Ask AI to refine plan"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveTrip}
+                    className="h-11 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                    title="Save current plan to Trips"
+                  >
+                    Save to Trips
                   </button>
                 </div>
               </div>
@@ -286,23 +413,42 @@ export default function Planner() {
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-card overflow-hidden">
-                <AIAssistant
-                  prompt={aiPrompt}
-                  autoSendKey={aiPromptKey}
-                  onResponse={(txt) => setAiOutput(txt)}
-                  prefill={composePrompt()}
-                />
+                {/* Preserving layout: keep AI panel placeholder without in-browser model */}
+                <div className="p-4 border-b border-slate-100">
+                  <div className="text-lg font-semibold">AI Assistant</div>
+                  <div className="text-xs text-slate-500">
+                    Server-side AI plans when available. No WebGPU required.
+                  </div>
+                  {aiError && (
+                    <div className="mt-2 text-xs text-red-600" role="alert">
+                      {aiError}
+                    </div>
+                  )}
+                </div>
+                <div
+                  id="ai-status"
+                  className="p-4 text-sm text-slate-700"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {aiLoading
+                    ? "Contacting AI…"
+                    : "Click the button to generate a tailored itinerary."}
+                </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
                 <div className="text-lg font-semibold mb-2">
                   AI itinerary (experimental)
                 </div>
                 <div className="text-sm text-slate-500 mb-3">
-                  Runs fully in your browser. First response may take time to
-                  load and cache the model.
+                  Powered by server-side AI (if configured). Falls back to a
+                  local heuristic plan.
                 </div>
                 <div className="prose prose-slate max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm leading-relaxed">
+                  <pre
+                    className="whitespace-pre-wrap text-sm leading-relaxed"
+                    aria-live="polite"
+                  >
                     {aiOutput ||
                       'Click "Ask AI to refine plan" above to generate a tailored itinerary.'}
                   </pre>

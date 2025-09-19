@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { showError, showSuccess } from "../utils/toast";
+
 const StoreBadge = ({ type = "apple" }) => (
   <a
     href="#"
@@ -15,153 +19,178 @@ const StoreBadge = ({ type = "apple" }) => (
       >
         <path d="M16.365 1.43c.09 1.1-.32 2.17-.99 2.97-.67.8-1.8 1.42-2.89 1.34-.1-1.06.37-2.14 1.01-2.86.71-.83 1.92-1.43 2.87-1.45zM20.64 17.37c-.49 1.14-1.07 2.27-1.9 3.3-.64.8-1.37 1.7-2.36 1.72-.95.02-1.26-.56-2.36-.56s-1.44.54-2.36.58c-.97.04-1.71-.86-2.35-1.66-1.28-1.57-2.26-3.97-1.88-6.27.19-1.2.75-2.33 1.6-3.15.74-.72 1.73-1.26 2.78-1.28.98-.02 1.9.65 2.36.65.46 0 1.67-.8 2.81-.68.48.02 1.81.19 2.67 1.42-.07.05-1.6.94-1.58 2.8.02 2.23 1.94 2.96 1.97 2.97z" />
       </svg>
-    ) : (
-      <svg
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        className="w-5 h-5"
-        aria-hidden
-      >
-        <path d="M3 2.5l11.5 9.5L3 21.5V2.5zm13.4 8.6L6 3.8l9.7 9.2-2.5 2.4 3.2 1.9L21 12l-4.6-1z" />
-      </svg>
-    )}
+    ) : null}
     <div className="leading-4">
-      <div className="text-[10px] opacity-80">
-        {type === "apple" ? "Download on the" : "GET IT ON"}
-      </div>
-      <div className="text-sm font-bold">
-        {type === "apple" ? "App Store" : "Google Play"}
-      </div>
+      <div className="text-[10px] opacity-80">Download on the</div>
+      <div className="text-sm font-bold">App Store</div>
     </div>
   </a>
 );
 
 const Footer = () => {
-  const sitemapCols = [
-    [
-      "Hotels near me",
-      "Hotels in Manali",
-      "Hotels in Nainital",
-      "Hotels in Mount Abu",
-      "Hotels in Agra",
-      "Hotels in Haridwar",
-    ],
-    [
-      "Hotels in Goa",
-      "Hotels in Udaipur",
-      "Hotels in Lonavala",
-      "Hotels in Kodaikanal",
-      "Hotels in Gangtok",
-      "Hotels in Kolkata",
-    ],
-    [
-      "Hotels in Jaipur",
-      "Hotels in Delhi",
-      "Hotels in Mysore",
-      "Hotels in Chandigarh",
-      "Hotels in Tirupati",
-      "Hotels in Rishikesh",
-    ],
-    [
-      "Hotels in Shimla",
-      "Hotels in Mumbai",
-      "Hotels in Darjeeling",
-      "Hotels in Shirdi",
-      "Hotels in Dalhousie",
-      "Hotels in Varanasi",
-    ],
-  ];
+  const [email, setEmail] = useState("");
+
+  const popularCities = ["Jaipur", "Agra", "Varanasi", "Goa", "Manali"];
+
+  function subscribe() {
+    const value = email.trim();
+    if (!value) return showError({ message: "Please enter your email" });
+    // simple email check
+    const ok = /.+@.+\..+/.test(value);
+    if (!ok) return showError({ message: "Enter a valid email address" });
+    showSuccess({
+      title: "Subscribed",
+      message: "You will now receive trip tips.",
+    });
+    setEmail("");
+  }
 
   return (
-    <footer className="mt-16 bg-slate-800 text-slate-200">
-      <div className="container py-8">
-        {/* Top brand bar */}
-        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-4 pb-8 border-b border-slate-700">
+    <footer className="mt-16 bg-slate-900 text-slate-200">
+      <div className="container py-10">
+        {/* Top: brand + quick ctas */}
+        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-4 pb-8 border-b border-white/10">
           <div className="flex items-center gap-3 text-center lg:text-left">
             <span className="text-2xl font-extrabold text-white">Raahi</span>
             <span className="text-slate-300">
-              World's leading chain of hotels and homes
+              Plan. Explore. Book. Travel smart.
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="btn-outline text-white/90 border-white/20">
-              List your property
-            </button>
-            <button className="btn-outline text-white/90 border-white/20 hidden md:inline-flex">
-              Become a partner
-            </button>
-          </div>
+          {/* Removed partner/property CTAs as requested */}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 py-8 border-b border-slate-700">
+        {/* Middle: grids */}
+        <div className="grid lg:grid-cols-4 gap-8 py-8 border-b border-white/10">
+          {/* App + newsletter */}
           <div>
-            <div className="font-semibold mb-3">
-              Download our app for exciting offers
-            </div>
+            <div className="font-semibold mb-3">Get the app</div>
             <div className="flex gap-3">
               <StoreBadge type="apple" />
-              <StoreBadge type="android" />
+              {/* Removed Google Play badge as requested */}
             </div>
-            <form className="mt-5 flex gap-2 max-w-md">
+            <div className="font-semibold mt-6">Stay in the loop</div>
+            <div className="text-sm text-slate-300 mb-2">
+              Curated deals and travel tips.
+            </div>
+            <div className="mt-2 flex gap-2 max-w-md">
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
-                className="flex-1 h-11 rounded-xl border border-white/20 bg-white/5 px-4 placeholder:text-slate-400 text-slate-100"
+                className="flex-1 h-11 rounded-xl border border-white/15 bg-white/5 px-4 placeholder:text-slate-400 text-slate-100 focus:outline-none focus:ring-2 focus:ring-white/20"
               />
               <button
                 type="button"
+                onClick={subscribe}
                 className="h-11 px-4 rounded-xl bg-white/10 text-white hover:bg-white/15"
               >
                 Subscribe
               </button>
-            </form>
+            </div>
           </div>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <ul className="space-y-2 text-sm">
-              <li>About Us</li>
-              <li>Teams / Careers</li>
-              <li>Blogs</li>
-              <li>Support</li>
+
+          {/* Explore */}
+          <nav aria-label="Explore" className="text-sm">
+            <div className="font-semibold mb-3 text-white">Explore</div>
+            <ul className="space-y-2 text-slate-300">
+              <li>
+                <Link to="/explore/stays" className="hover:text-white">
+                  Stays
+                </Link>
+              </li>
+              <li>
+                <Link to="/planner" className="hover:text-white">
+                  Trip Planner
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard" className="hover:text-white">
+                  Dashboard & Insights
+                </Link>
+              </li>
+              <li>
+                <Link to="/explore/market" className="hover:text-white">
+                  Marketplace
+                </Link>
+              </li>
             </ul>
-            <ul className="space-y-2 text-sm">
-              <li>Terms & conditions</li>
-              <li>Guest Policies</li>
-              <li>Privacy Policy</li>
-              <li>Trust and Safety</li>
+          </nav>
+
+          {/* Resources */}
+          <nav aria-label="Resources" className="text-sm">
+            <div className="font-semibold mb-3 text-white">Resources</div>
+            <ul className="space-y-2 text-slate-300">
+              <li>
+                <Link to="/guides" className="hover:text-white">
+                  Travel Guides
+                </Link>
+              </li>
+              <li>
+                <Link to="/safety" className="hover:text-white">
+                  Safety
+                </Link>
+              </li>
+              <li>
+                <Link to="/budget" className="hover:text-white">
+                  Budget & Currency
+                </Link>
+              </li>
+              <li>
+                <Link to="/search" className="hover:text-white">
+                  Search
+                </Link>
+              </li>
             </ul>
-          </div>
+          </nav>
+
+          {/* Account */}
+          <nav aria-label="Account" className="text-sm">
+            <div className="font-semibold mb-3 text-white">Account</div>
+            <ul className="space-y-2 text-slate-300">
+              <li>
+                <Link to="/trips" className="hover:text-white">
+                  Trips
+                </Link>
+              </li>
+              <li>
+                <Link to="/saved" className="hover:text-white">
+                  Saved
+                </Link>
+              </li>
+              <li>
+                <Link to="/auth" className="hover:text-white">
+                  Login / Sign up
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
 
-        <div className="py-8">
-          <h3 className="text-lg font-semibold mb-4">Popular Destinations</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-slate-300">
-            {sitemapCols.map((col, i) => (
-              <ul key={i} className="space-y-2">
-                {col.map((item) => (
-                  <li key={item} className="hover:text-white cursor-pointer">
-                    {item}
-                  </li>
-                ))}
-              </ul>
+        {/* Popular cities row */}
+        <div className="py-8 border-b border-white/10">
+          <h3 className="text-lg font-semibold mb-4">Popular cities</h3>
+          <ul className="flex flex-wrap gap-2">
+            {popularCities.map((c) => (
+              <li key={c}>
+                <Link
+                  to={`/explore/stays?location=${encodeURIComponent(c)}`}
+                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 hover:bg-white/10"
+                >
+                  {c}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
-        <div className="pt-6 border-t border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Bottom: legal + socials + preferences */}
+        <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-sm text-slate-400">
-            © {new Date().getFullYear()} Raahi. All rights reserved.
+            © {new Date().getFullYear()} Raahi • All rights reserved
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2">
-              <select className="bg-transparent text-slate-300 border border-slate-600 rounded-lg px-2 py-1 text-sm">
-                <option className="bg-slate-800">English (EN)</option>
-                <option className="bg-slate-800">हिन्दी (HI)</option>
-              </select>
-              <select className="bg-transparent text-slate-300 border border-slate-600 rounded-lg px-2 py-1 text-sm">
-                <option className="bg-slate-800">INR (₹)</option>
-                <option className="bg-slate-800">USD ($)</option>
-              </select>
-            </div>
+            {/* Removed language and currency selectors as requested */}
             <div className="flex items-center gap-3 text-white/80">
               <a aria-label="Twitter" href="#" className="hover:text-white">
                 <svg

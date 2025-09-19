@@ -59,7 +59,7 @@ export default function Budget() {
               <select
                 value={home}
                 onChange={(e) => setHome(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg h-10 px-3"
+                className="select-control w-full"
               >
                 {Object.keys(rates).map((c) => (
                   <option key={c}>{c}</option>
@@ -112,10 +112,7 @@ export default function Budget() {
                 placeholder="Amount"
                 className="border border-slate-300 rounded-lg h-10 px-3"
               />
-              <select
-                name="cur"
-                className="border border-slate-300 rounded-lg h-10 px-3"
-              >
+              <select name="cur" className="select-control">
                 {Object.keys(rates).map((c) => (
                   <option key={c}>{c}</option>
                 ))}

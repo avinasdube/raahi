@@ -78,3 +78,41 @@ export const logout = async (_req, res) => {
   });
   res.status(200).json({ message: "Logged out" });
 };
+
+export const updateMe = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { name, currentPassword, newPassword } = req.body || {};
+
+    if (typeof name === "string" && name.trim().length >= 2) {
+      user.name = name.trim();
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res
+          .status(400)
+          .json({
+            message: "Current password is required to set a new password",
+          });
+      }
+      const ok = await user.comparePassword(currentPassword);
+      if (!ok)
+        return res.status(401).json({ message: "Invalid current password" });
+      if (String(newPassword).length < 6) {
+        return res
+          .status(400)
+          .json({ message: "New password must be at least 6 characters" });
+      }
+      user.password = newPassword;
+    }
+
+    await user.save();
+    res.json({ user });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

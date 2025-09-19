@@ -11,4 +11,11 @@ export const API_ENDPOINTS = {
   login: "/auth/login",
   logout: "/auth/logout",
   me: "/auth/me",
+  // data routes are mounted at /api/, not /api/data
+  weather: "/weather",
+  crowd: "/crowd",
+  currency: "/currency",
+  hotels: "/hotels",
+  pois: "/pois",
+  aiPlan: "/ai/plan",
 };

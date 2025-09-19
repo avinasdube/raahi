@@ -14,13 +14,8 @@ export default function FiltersSidebar({
     "Near airport",
     "Local IDs accepted",
   ];
-  const popular = [
-    "New Delhi Railway Station",
-    "Mahipalpur",
-    "Paharganj",
-    "Karol Bagh",
-    "Dwarka, New Delhi",
-  ];
+  // Align with current dataset's cities so filters are effective
+  const popular = ["Jaipur", "Agra", "Varanasi", "Goa", "Manali"];
   return (
     <aside className="w-full md:w-80 shrink-0 border-r border-slate-200 pr-4 md:pr-6 sticky top-24 self-start">
       <div className="flex items-center justify-between mb-4">
@@ -44,6 +39,7 @@ export default function FiltersSidebar({
               key={p}
               type="button"
               onClick={() => onTogglePopular?.(p)}
+              aria-pressed={selectedPopular.includes(p)}
               className={`px-3 py-2 rounded-lg text-sm border ${
                 selectedPopular.includes(p)
                   ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)]"

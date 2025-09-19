@@ -42,13 +42,14 @@ export default function SearchResults() {
             </h1>
             <div className="hidden md:flex items-center gap-3 text-sm">
               <span>Sort by</span>
-              <select className="border border-slate-300 rounded-lg px-2 py-1">
+              <select className="select-control select-sm">
                 <option>Popularity</option>
                 <option>Price (Low to High)</option>
               </select>
             </div>
           </div>
-          {!loading && items.map((h) => <HotelCard key={h.id} hotel={h} />)}
+          {!loading &&
+            items.map((h) => <HotelCard key={h.id || h._id} hotel={h} />)}
         </section>
       </main>
       <Footer />

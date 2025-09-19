@@ -1,25 +1,56 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { getHotels } from "../api/api";
 import FiltersSidebar from "../components/FiltersSidebar";
 import Footer from "../components/Footer";
 import HotelCard from "../components/HotelCard";
 import Navbar from "../components/Navbar";
-import { hotels as seed } from "../data/hotels";
 
 const Hotels = ({ embedded = false }) => {
-  // Expand mock data to look like a richer list (memoized)
-  const base = useMemo(
-    () => [...seed, ...seed.map((h, i) => ({ ...h, id: h.id + "x" + i }))],
-    []
-  );
+  // Backend data state
+  const [hotelsRaw, setHotelsRaw] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // URL-synced state
+  // URL-synced state (declare BEFORE any effects that use it)
   const [searchParams, setSearchParams] = useSearchParams();
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const q = searchParams.get("q") || "";
+        const loc = searchParams.get("location") || q;
+        const { data } = await getHotels({ location: loc, q });
+        if (!mounted) return;
+        setHotelsRaw(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!mounted) return;
+        console.error("Fetch hotels error", e);
+        setError("Failed to load hotels");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [searchParams]);
+
   // Filters state
-  const [selectedPopular, setSelectedPopular] = useState(() =>
-    (searchParams.get("popular") || "").split(",").filter(Boolean)
-  );
+  const [selectedPopular, setSelectedPopular] = useState(() => {
+    const fromUrl = (searchParams.get("popular") || "")
+      .split(",")
+      .filter(Boolean);
+    // if user came from Home with q/city, preselect that as a popular tag
+    if (!fromUrl.length) {
+      const q = searchParams.get("q");
+      if (q) return [q];
+    }
+    return fromUrl;
+  });
   const [selectedCollections, setSelectedCollections] = useState(() =>
     (searchParams.get("collections") || "").split(",").filter(Boolean)
   );
@@ -55,6 +86,33 @@ const Hotels = ({ embedded = false }) => {
   };
 
   const hotels = useMemo(() => {
+    // Normalize backend data into card-friendly shape
+    const base = hotelsRaw.map((h) => {
+      const price = Number(h.price) || 0;
+      const rating = Number(h.rating) || 0;
+      const originalPrice = price > 0 ? Math.round(price * 1.15) : 0;
+      const discount =
+        price > 0 && originalPrice > 0
+          ? Math.round(((originalPrice - price) / originalPrice) * 100)
+          : 0;
+      return {
+        id: h._id || h.id,
+        name: h.name,
+        location: h.location,
+        price,
+        rating,
+        available: h.available,
+        image: h.image, // may be undefined; HotelCard will handle
+        amenities: h.amenities || [],
+        originalPrice,
+        discount,
+        reviews: h.reviews, // optional
+        badge: h.badge, // optional
+        socialProof: h.socialProof, // optional
+        coords: h.coords,
+      };
+    });
+
     let list = base.filter((h) => h.price <= priceMax);
     // popular filter: match if hotel.location contains any selected popular tag
     if (selectedPopular.length) {
@@ -68,11 +126,11 @@ const Hotels = ({ embedded = false }) => {
     if (selectedCollections.length) {
       list = list.filter((h) => {
         return selectedCollections.every((c) => {
-          if (c.includes("Family")) return h.amenities?.includes("Reception");
-          if (c.includes("Group")) return (h.amenities || []).length >= 3;
+          if (c.includes("Family")) return h.rating >= 3.5;
+          if (c.includes("Group")) return h.price <= 3000;
           if (c.includes("Airport"))
-            return h.location?.toLowerCase().includes("airport");
-          if (c.includes("Local IDs")) return true; // allow all for demo
+            return (h.location || "").toLowerCase().includes("airport");
+          if (c.includes("Local IDs")) return true;
           return true;
         });
       });
@@ -81,7 +139,7 @@ const Hotels = ({ embedded = false }) => {
     if (sortBy === "rating")
       list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     return list;
-  }, [base, priceMax, selectedPopular, selectedCollections, sortBy]);
+  }, [hotelsRaw, priceMax, selectedPopular, selectedCollections, sortBy]);
 
   const total = hotels.length;
   const start = (page - 1) * pageSize;
@@ -147,18 +205,21 @@ const Hotels = ({ embedded = false }) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold">
-                {total} Stays found
+                {loading ? "Loading stays…" : `${total} Stays found`}
               </h1>
               <p className="text-slate-600">
                 Use filters to refine your search by location, price, and more.
               </p>
+              {error && (
+                <div className="text-sm text-red-600 mt-1">{error}</div>
+              )}
             </div>
             <div className="hidden md:flex items-center gap-3 text-sm">
               <span>Sort by</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="border border-slate-300 rounded-lg px-2 py-1"
+                className="select-control select-sm"
               >
                 <option value="popularity">Popularity</option>
                 <option value="priceAsc">Price (Low to High)</option>
@@ -211,7 +272,7 @@ const Hotels = ({ embedded = false }) => {
           )}
 
           {pageItems.map((h) => (
-            <HotelCard key={h.id} hotel={h} />
+            <HotelCard key={h.id} hotel={h} showMap={false} />
           ))}
 
           {/* Pagination */}

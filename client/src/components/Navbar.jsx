@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 const GlobeIcon = () => (
   <svg
@@ -40,8 +41,16 @@ const HamburgerIcon = ({ isOpen }) => (
 );
 
 const Navbar = () => {
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [dark, setDark] = useState(() =>
+    typeof document !== "undefined"
+      ? document.documentElement.classList.contains("dark")
+      : false
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -50,11 +59,24 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close mobile menu on escape key
+  // Initialize theme from document class (set early in index.html)
+  useEffect(() => {
+    const enabled = document.documentElement.classList.contains("dark");
+    setDark(enabled);
+  }, []);
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("raahi-theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  // Close mobile menu or account menu on escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") {
         setMobileMenuOpen(false);
+        setAccountOpen(false);
       }
     };
 
@@ -71,6 +93,19 @@ const Navbar = () => {
       document.body.style.overflow = "unset";
     };
   }, [mobileMenuOpen]);
+
+  // Close account menu on outside click
+  const accountRef = useRef(null);
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!accountRef.current) return;
+      if (!accountRef.current.contains(e.target)) {
+        setAccountOpen(false);
+      }
+    };
+    if (accountOpen) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [accountOpen]);
 
   return (
     <header
@@ -92,8 +127,8 @@ const Navbar = () => {
           {[
             { to: "/", label: "Home" },
             { to: "/explore", label: "Explore" },
+            { to: "/dashboard", label: "Dashboard" },
             { to: "/trips", label: "Trips" },
-            { to: "/saved", label: "Saved" },
             { to: "/planner", label: "Planner" },
             { to: "/safety", label: "Safety" },
             { to: "/budget", label: "Budget" },
@@ -111,12 +146,66 @@ const Navbar = () => {
             </NavLink>
           ))}
           <div className="h-5 w-px bg-slate-200/70" />
-          <Link
-            to="/auth"
-            className="btn-outline hidden lg:inline-flex text-slate-800"
+          <button
+            onClick={() => setDark((d) => !d)}
+            className="group inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-800 hover:text-[var(--brand)] transition-colors dark:text-slate-200"
+            aria-label="Toggle dark mode"
+            title="Toggle dark mode"
           >
-            Login / Signup
-          </Link>
+            <span
+              aria-hidden
+              className="text-2xl leading-none transform transition-transform duration-150 ease-out group-hover:scale-110 active:scale-95"
+            >
+              {dark ? "🌙" : "☀️"}
+            </span>
+          </button>
+          {!loading && !user && (
+            <Link
+              to="/auth"
+              className="btn-outline hidden lg:inline-flex text-slate-800"
+            >
+              Login / Signup
+            </Link>
+          )}
+          {!loading && user && (
+            <div className="relative" ref={accountRef}>
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 p-1.5 hover:bg-slate-50"
+                aria-label="Account menu"
+                aria-expanded={accountOpen}
+                onClick={() => setAccountOpen((o) => !o)}
+              >
+                <img
+                  src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                    user.name || user.email || "U"
+                  )}`}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full"
+                />
+              </button>
+              {accountOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-lg">
+                  <Link
+                    to="/profile"
+                    className="block px-3 py-2 text-sm hover:bg-slate-50"
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      signOut();
+                      navigate("/");
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <button
             className="inline-flex items-center gap-2 text-slate-800"
             aria-label="Language"
@@ -149,8 +238,8 @@ const Navbar = () => {
               {[
                 { to: "/", label: "Home" },
                 { to: "/explore", label: "Explore" },
+                { to: "/dashboard", label: "Dashboard" },
                 { to: "/trips", label: "Trips" },
-                { to: "/saved", label: "Saved" },
                 { to: "/planner", label: "Planner" },
                 { to: "/safety", label: "Safety" },
                 { to: "/budget", label: "Budget" },
@@ -172,13 +261,50 @@ const Navbar = () => {
               ))}
 
               <div className="pt-3 border-t border-slate-200/70">
-                <Link
-                  to="/auth"
-                  className="block w-full text-center py-3 px-4 bg-[var(--brand)] text-white rounded-lg font-semibold hover:bg-[var(--brand)]/90 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+                <button
+                  className="group w-full flex items-center justify-center py-3 px-4 rounded-lg border border-slate-300 text-slate-800 dark:text-slate-200 dark:border-slate-600"
+                  onClick={() => setDark((d) => !d)}
+                  aria-label="Toggle dark mode"
+                  title="Toggle dark mode"
                 >
-                  Login / Signup
-                </Link>
+                  <span
+                    aria-hidden
+                    className="text-2xl leading-none transform transition-transform duration-150 ease-out group-hover:scale-110 active:scale-95"
+                  >
+                    {dark ? "🌙" : "☀️"}
+                  </span>
+                </button>
+
+                {!loading && !user && (
+                  <Link
+                    to="/auth"
+                    className="block w-full text-center py-3 px-4 bg-[var(--brand)] text-white rounded-lg font-semibold hover:bg-[var(--brand)]/90 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Login / Signup
+                  </Link>
+                )}
+                {!loading && user && (
+                  <div className="grid gap-2">
+                    <Link
+                      to="/profile"
+                      className="block w-full text-center py-3 px-4 rounded-lg border border-slate-300 text-slate-800 hover:bg-slate-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      className="w-full py-3 px-4 rounded-lg border border-slate-300 text-slate-800 hover:bg-slate-50"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        signOut();
+                        navigate("/");
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
 
                 <button
                   className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 text-slate-600 hover:text-slate-800 transition-colors"
