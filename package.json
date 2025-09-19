@@ -1,0 +1,20 @@
+{
+  "name": "raahi",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Raahi monorepo: React client + Node/Express server",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n client,server -c green,cyan \"npm run dev --workspace client\" \"npm run start --workspace server\"",
+    "seed": "npm:seed --workspace server",
+    "export:csv": "npm:export:csv --workspace server",
+    "build": "npm:build --workspace client",
+    "preview": "npm:preview --workspace client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
