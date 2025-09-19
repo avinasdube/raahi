@@ -74,7 +74,14 @@ function App() {
           <Route path="/management" element={<Management />} />
           <Route path="/safety" element={<Safety />} />
           <Route path="/budget" element={<Budget />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
           {/* Fallback: redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
