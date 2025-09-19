@@ -127,24 +127,26 @@ const Navbar = () => {
           {[
             { to: "/", label: "Home" },
             { to: "/explore", label: "Explore" },
-            { to: "/dashboard", label: "Dashboard" },
+            user && { to: "/dashboard", label: "Dashboard" },
             { to: "/trips", label: "Trips" },
-            { to: "/planner", label: "Planner" },
+            user && { to: "/planner", label: "Planner" },
             { to: "/safety", label: "Safety" },
             { to: "/budget", label: "Budget" },
-          ].map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `hover:text-[var(--brand)] ${
-                  isActive ? "text-[var(--brand)]" : "text-slate-800"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          ]
+            .filter(Boolean)
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `hover:text-[var(--brand)] ${
+                    isActive ? "text-[var(--brand)]" : "text-slate-800"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           <div className="h-5 w-px bg-slate-200/70" />
           <button
             onClick={() => setDark((d) => !d)}
@@ -238,27 +240,29 @@ const Navbar = () => {
               {[
                 { to: "/", label: "Home" },
                 { to: "/explore", label: "Explore" },
-                { to: "/dashboard", label: "Dashboard" },
+                user && { to: "/dashboard", label: "Dashboard" },
                 { to: "/trips", label: "Trips" },
-                { to: "/planner", label: "Planner" },
+                user && { to: "/planner", label: "Planner" },
                 { to: "/safety", label: "Safety" },
                 { to: "/budget", label: "Budget" },
-              ].map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `block py-2 px-3 rounded-lg text-base font-semibold transition-colors ${
-                      isActive
-                        ? "text-[var(--brand)] bg-[var(--brand)]/5"
-                        : "text-slate-800 hover:text-[var(--brand)] hover:bg-slate-50"
-                    }`
-                  }
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+              ]
+                .filter(Boolean)
+                .map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `block py-2 px-3 rounded-lg text-base font-semibold transition-colors ${
+                        isActive
+                          ? "text-[var(--brand)] bg-[var(--brand)]/5"
+                          : "text-slate-800 hover:text-[var(--brand)] hover:bg-slate-50"
+                      }`
+                    }
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
 
               <div className="pt-3 border-t border-slate-200/70">
                 <button
