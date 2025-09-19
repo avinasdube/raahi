@@ -3,6 +3,8 @@ import agraImg from "../assets/Agra India.JPG";
 import goa from "../assets/goa.jpg";
 import hawamahal from "../assets/hawamahal.jpg";
 import manali from "../assets/manalii.jpg";
+import stays from "../assets/stays.jpg";
+import mkp from "../assets/marketplace.jpg";
 import varanasi from "../assets/varanasi.jpg";
 import Footer from "../components/Footer";
 import MapView from "../components/MapView";
@@ -143,7 +145,7 @@ const Home = () => {
         </section>
 
         {/* Explore split cards */}
-        <section className="bg-gradient-to-b from-white to-[var(--bg)] py-10 md:py-14">
+        <section className="bg-[var(--bg)] py-10 md:py-14">
           <div className="container">
             <Reveal>
               <SectionHeading
@@ -159,7 +161,12 @@ const Home = () => {
                 >
                   <div
                     className="h-52 md:h-64"
-                    style={{ backgroundImage: `url(${agraImg})` }}
+                    style={{
+                      backgroundImage: `url(${stays})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      backgroundRepeat: "no-repeat",
+                    }}
                   />
                   <div className="p-5">
                     <div className="text-xl font-bold">Stays</div>
@@ -179,7 +186,12 @@ const Home = () => {
                 >
                   <div
                     className="h-52 md:h-64"
-                    style={{ backgroundImage: `url(${manali})` }}
+                    style={{
+                      backgroundImage: `url(${mkp})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      backgroundRepeat: "no-repeat",
+                    }}
                   />
                   <div className="p-5">
                     <div className="text-xl font-bold">Marketplace</div>
