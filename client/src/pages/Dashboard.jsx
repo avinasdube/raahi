@@ -174,6 +174,72 @@ export default function Dashboard() {
     return { labels: days, data };
   }, [cityWeather, crowd, city]);
 
+  // Derive actionable insights for a friendly report section
+  const insights = useMemo(() => {
+    // Best day from heatmap
+    let bestDay = null;
+    if (heatmap.labels?.length && heatmap.data?.length) {
+      const idx = heatmap.data.indexOf(Math.max(...heatmap.data));
+      bestDay = heatmap.labels[idx];
+    }
+
+    // Crowd in selected city (reuse logic similar to crowdTrend)
+    const allowed = new Set(
+      (pois || []).map((p) => String(p.name || "").toLowerCase())
+    );
+    let inCity = [];
+    if (allowed.size > 0) {
+      inCity = crowd.filter((c) =>
+        allowed.has(String(c.place || "").toLowerCase())
+      );
+    } else {
+      inCity = crowd.filter((c) =>
+        c.place?.toLowerCase().includes(city.toLowerCase())
+      );
+    }
+    const mostCrowded = inCity.length
+      ? inCity.reduce((a, b) =>
+          (Number(a.percent) || 0) > (Number(b.percent) || 0) ? a : b
+        )
+      : null;
+    const leastCrowded = inCity.length
+      ? inCity.reduce((a, b) =>
+          (Number(a.percent) || 0) < (Number(b.percent) || 0) ? a : b
+        )
+      : null;
+
+    // Prices from loaded hotels
+    const priceList = hotels
+      .map((h) => Number(h.price) || 0)
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const avgPrice = priceList.length
+      ? Math.round(priceList.reduce((a, b) => a + b, 0) / priceList.length)
+      : null;
+    const cheapest = hotels.length
+      ? hotels.reduce((a, b) =>
+          (Number(a.price) || Infinity) < (Number(b.price) || Infinity) ? a : b
+        )
+      : null;
+    const budgetPicks = [...hotels]
+      .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
+      .slice(0, 3);
+
+    // Weather callout
+    const weatherCond = cityWeather?.condition || null;
+    const tempNow = cityWeather?.temperature ?? null;
+
+    return {
+      bestDay,
+      mostCrowded,
+      leastCrowded,
+      avgPrice,
+      cheapest,
+      budgetPicks,
+      weatherCond,
+      tempNow,
+    };
+  }, [heatmap, pois, crowd, city, hotels, cityWeather]);
+
   return (
     <>
       <Navbar />
@@ -394,6 +460,108 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* Insightful summary/report */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+          <h2 className="text-xl font-bold mb-3">
+            Smart Travel Report for {city}
+          </h2>
+          <div className="grid lg:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-sm text-slate-500 mb-1">Best time</div>
+              <div className="text-2xl font-extrabold">
+                {insights.bestDay ? insights.bestDay : "–"}
+              </div>
+              <div className="text-sm text-slate-600 mt-1">
+                {insights.weatherCond
+                  ? `Forecast: ${insights.weatherCond}`
+                  : ""}
+                {insights.tempNow != null ? ` • ${insights.tempNow}°C now` : ""}
+              </div>
+              <ul className="mt-3 text-sm text-slate-700 list-disc pl-4 space-y-1">
+                <li>Plan outdoor sights on the best day above.</li>
+                <li>Keep a backup indoor activity for heat or rain.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-sm text-slate-500 mb-1">Price insight</div>
+              <div className="text-2xl font-extrabold">
+                {insights.avgPrice != null
+                  ? `₹${insights.avgPrice.toLocaleString("en-IN")}`
+                  : "–"}
+              </div>
+              <div className="text-sm text-slate-600 mt-1">
+                Average per-night price in current listings
+              </div>
+              {insights.cheapest && (
+                <div className="mt-3 text-sm">
+                  Lowest today:{" "}
+                  <span className="font-semibold">
+                    ₹{Number(insights.cheapest.price).toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-slate-600">
+                    {" "}
+                    at {insights.cheapest.name}
+                  </span>
+                </div>
+              )}
+              {insights.budgetPicks?.length > 0 && (
+                <ul className="mt-2 text-sm text-slate-700 space-y-1">
+                  {insights.budgetPicks.map((h) => (
+                    <li
+                      key={h._id || h.id}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="truncate mr-2">{h.name}</span>
+                      <span className="font-semibold">
+                        ₹{Number(h.price).toLocaleString("en-IN")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="text-sm text-slate-500 mb-1">Crowd guidance</div>
+              <div className="text-sm text-slate-700">
+                {insights.mostCrowded ? (
+                  <>
+                    Busiest:{" "}
+                    <span className="font-semibold">
+                      {insights.mostCrowded.place}
+                    </span>{" "}
+                    (
+                    <span className="font-semibold">
+                      {Number(insights.mostCrowded.percent)}%
+                    </span>
+                    )
+                  </>
+                ) : (
+                  "–"
+                )}
+              </div>
+              {insights.leastCrowded && (
+                <div className="text-sm text-slate-700 mt-1">
+                  Quietest:{" "}
+                  <span className="font-semibold">
+                    {insights.leastCrowded.place}
+                  </span>{" "}
+                  (
+                  <span className="font-semibold">
+                    {Number(insights.leastCrowded.percent)}%
+                  </span>
+                  )
+                </div>
+              )}
+              <ul className="mt-3 text-sm text-slate-700 list-disc pl-4 space-y-1">
+                <li>Visit quieter spots earlier in the day.</li>
+                <li>Pre-book tickets near busy areas to skip lines.</li>
+              </ul>
             </div>
           </div>
         </section>
