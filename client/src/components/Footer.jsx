@@ -153,11 +153,11 @@ const Footer = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2">
-              <select className="bg-transparent text-slate-300 border border-slate-600 rounded-lg px-2 py-1 text-sm">
+              <select className="select-control select-sm bg-transparent text-slate-300">
                 <option className="bg-slate-800">English (EN)</option>
                 <option className="bg-slate-800">हिन्दी (HI)</option>
               </select>
-              <select className="bg-transparent text-slate-300 border border-slate-600 rounded-lg px-2 py-1 text-sm">
+              <select className="select-control select-sm bg-transparent text-slate-300">
                 <option className="bg-slate-800">INR (₹)</option>
                 <option className="bg-slate-800">USD ($)</option>
               </select>
