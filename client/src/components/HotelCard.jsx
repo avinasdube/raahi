@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
-export default function HotelCard({ hotel }) {
+export default function HotelCard({ hotel, showMap = false }) {
+  const { user } = useAuth();
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
@@ -42,7 +44,7 @@ export default function HotelCard({ hotel }) {
   const hasCoords = !!latlng;
 
   useEffect(() => {
-    if (!hasCoords) return;
+    if (!showMap || !hasCoords) return;
     let disposed = false;
     const ensureLeaflet = async () => {
       if (!document.querySelector("link[data-leaflet]")) {
@@ -84,18 +86,19 @@ export default function HotelCard({ hotel }) {
         /* noop */
       }
     };
-  }, [hasCoords, latlng, hotel?.name]);
+  }, [showMap, hasCoords, latlng, hotel?.name]);
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card group">
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr]">
-        <div className="relative h-56 md:h-48">
+        <div className="relative h-56 md:h-52">
           <img
             src={
+              (hotel.images && hotel.images[0]) ||
               hotel.image ||
               "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1200&auto=format&fit=crop"
             }
             alt={hotel.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform group-hover:scale-[1.02]"
           />
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             Raahi Select
@@ -165,15 +168,21 @@ export default function HotelCard({ hotel }) {
                 View Details
               </Link>
               <Link
-                to={`/hotel/${hotel.id || hotel._id}`}
+                to={
+                  user
+                    ? `/hotel/${hotel.id || hotel._id}`
+                    : `/auth?next=${encodeURIComponent(
+                        `/hotel/${hotel.id || hotel._id}`
+                      )}`
+                }
                 className="btn btn-primary"
               >
-                Book Now
+                {user ? "Book Now" : "Login to Book"}
               </Link>
             </div>
           </div>
 
-          {hasCoords && (
+          {showMap && hasCoords && (
             <div className="mt-3 rounded-lg overflow-hidden border border-slate-200">
               <div ref={mapRef} className="h-40 w-full" />
             </div>
