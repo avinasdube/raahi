@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { login, signup } from "../api/api.js";
 import hawamahal from "../assets/hawamahal.jpg";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 // API_BASE_URL comes from utils/index.js, which api.js also uses via utils/constants.js
+import { useAuth } from "../hooks/useAuth";
 import { API_BASE_URL } from "../utils/index.js";
 
 const Tab = ({ active, onClick, children }) => (
@@ -22,8 +23,12 @@ const Tab = ({ active, onClick, children }) => (
 );
 
 export default function Auth() {
+  const { setUser } = useAuth();
   const [mode, setMode] = useState("login");
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") || "/";
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -80,9 +85,16 @@ export default function Auth() {
         const ok = res?.status === 200 || res?.status === 201;
         console.log(res.data);
         if (!ok) throw new Error(res?.data?.message || "Login failed");
+        // Persist token for Authorization header fallback and set user in context
+        try {
+          if (res.data?.token)
+            localStorage.setItem("raahi.token", res.data.token);
+        } catch {
+          /* ignore storage errors */
+        }
+        setUser(res.data?.user || null);
         setSuccess("Logged in successfully");
-        // Navigate to home (or previous page) after a brief pause
-        setTimeout(() => navigate("/"), 600);
+        navigate(next);
       } else {
         const payload = {
           fullName: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
@@ -93,10 +105,16 @@ export default function Auth() {
         const res = await signup(payload);
         const ok = res?.status === 201 || res?.status === 200;
         if (!ok) throw new Error(res?.data?.message || "Signup failed");
-        setSuccess("Account created! Please log in.");
-        // Switch to login, keep email prefilled
-        setMode("login");
-        setForm((s) => ({ ...s, password: "" }));
+        // Auto-login on successful signup
+        try {
+          if (res.data?.token)
+            localStorage.setItem("raahi.token", res.data.token);
+        } catch {
+          /* ignore storage errors */
+        }
+        setUser(res.data?.user || null);
+        setSuccess("Account created! You are now logged in.");
+        navigate(next);
       }
     } catch (err) {
       const message =
