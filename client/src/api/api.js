@@ -10,11 +10,23 @@ const API = axios.create({
   },
 });
 
+// Attach Authorization header if token stored
+API.interceptors.request.use((config) => {
+  try {
+    const token = localStorage.getItem("raahi.token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  } catch {
+    // ignore storage errors
+  }
+  return config;
+});
+
 // API helpers
 export const signup = (inputs) => API.post(`${API_ENDPOINTS.signup}`, inputs);
 export const login = (inputs) => API.post(`${API_ENDPOINTS.login}`, inputs);
 export const logout = () => API.get(`${API_ENDPOINTS.logout}`);
 export const currentUser = () => API.get(`${API_ENDPOINTS.me}`);
+export const updateMe = (payload) => API.put(`/auth/update`, payload);
 
 // Data fetching helpers
 export const getWeather = () => API.get(API_ENDPOINTS.weather);
