@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { getHotel } from "../api/api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../hooks/useAuth";
 
 export default function HotelDetails() {
   const { id } = useParams();
@@ -45,6 +46,7 @@ export default function HotelDetails() {
     return null;
   };
   const latlng = deriveLatLng();
+  const city = useMemo(() => hotel?.location || "", [hotel]);
 
   useEffect(() => {
     let mounted = true;
@@ -112,26 +114,37 @@ export default function HotelDetails() {
       <main className="container pt-24 md:pt-28 pb-10 grid lg:grid-cols-[1fr_360px] gap-6">
         <section>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 rounded-2xl overflow-hidden">
-            <img
-              src={hotel?.image}
-              alt={hotel?.name || "Hotel image"}
-              className="col-span-2 h-60 md:h-80 w-full object-cover"
-            />
-            <img
-              src={hotel?.image}
-              alt=""
-              className="h-28 md:h-40 w-full object-cover"
-            />
-            <img
-              src={hotel?.image}
-              alt=""
-              className="h-28 md:h-40 w-full object-cover"
-            />
-            <img
-              src={hotel?.image}
-              alt=""
-              className="h-28 md:h-40 w-full object-cover hidden md:block"
-            />
+            {(() => {
+              const imgs =
+                hotel?.images && hotel.images.length
+                  ? hotel.images
+                  : [
+                      hotel?.image,
+                      "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1200&auto=format&fit=crop",
+                      "https://images.unsplash.com/photo-1501117716987-c8e9226e6b67?q=80&w=1200&auto=format&fit=crop",
+                      "https://images.unsplash.com/photo-1496412705862-e0088f16f791?q=80&w=1200&auto=format&fit=crop",
+                    ].filter(Boolean);
+              const [first, ...rest] = imgs;
+              return (
+                <>
+                  <img
+                    src={first}
+                    alt={hotel?.name || "Hotel image"}
+                    className="col-span-2 h-60 md:h-80 w-full object-cover"
+                  />
+                  {rest.slice(0, 3).map((src, i) => (
+                    <img
+                      key={i}
+                      src={src}
+                      alt=""
+                      className={`h-28 md:h-40 w-full object-cover ${
+                        i === 2 ? "hidden md:block" : ""
+                      }`}
+                    />
+                  ))}
+                </>
+              );
+            })()}
           </div>
 
           <h1 className="text-2xl md:text-3xl font-extrabold mt-4">
@@ -167,16 +180,264 @@ export default function HotelDetails() {
           </div>
         </section>
 
-        <aside className="bg-white rounded-2xl border border-slate-200 p-4 h-max sticky top-24 shadow-card">
-          <div className="text-3xl font-extrabold">₹{hotel?.price ?? "--"}</div>
-          <div className="text-sm text-slate-500">
-            + taxes & fees · per room per night
+        <aside className="bg-white rounded-2xl border border-slate-200 p-4 h-max sticky top-24 shadow-card space-y-4">
+          <div>
+            <div className="text-3xl font-extrabold">
+              ₹{hotel?.price ?? "--"}
+            </div>
+            <div className="text-sm text-slate-500">
+              + taxes & fees · per room per night
+            </div>
           </div>
-          <button className="btn btn-primary w-full mt-4">Book Now</button>
+
+          {/* Payment methods */}
+          <BookingWidget price={hotel?.price} hotelName={hotel?.name} />
+
+          {/* Getting there */}
+          <GettingThere city={city} />
+
           {error && <div className="text-xs text-red-600 mt-2">{error}</div>}
         </aside>
       </main>
       <Footer />
     </>
+  );
+}
+
+function BookingWidget({ price = 0, hotelName = "" }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  const [mode, setMode] = useState("upi");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const confirm = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setStatus("");
+    // simulate processing
+    await new Promise((r) => setTimeout(r, 900));
+    setLoading(false);
+    setStatus("success");
+  };
+
+  if (!user) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return (
+      <div className="border border-slate-200 rounded-xl p-3">
+        <div className="text-sm font-semibold mb-2">Book your stay</div>
+        <p className="text-sm text-slate-600 mb-2">
+          Please log in to continue with booking.
+        </p>
+        <Link to={`/auth?next=${next}`} className="btn btn-primary w-full h-11">
+          Login to Book
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-3">
+      <div className="text-sm font-semibold mb-2">Book your stay</div>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        {[
+          { key: "upi", label: "UPI" },
+          { key: "card", label: "Card" },
+          { key: "net", label: "NetBanking" },
+          { key: "wallet", label: "Wallet" },
+          { key: "pay", label: "Pay at Hotel" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setMode(t.key)}
+            aria-pressed={mode === t.key}
+            className={`px-3 py-2 rounded-lg border text-sm ${
+              mode === t.key
+                ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]"
+                : "border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={confirm} className="space-y-2">
+        {mode === "upi" && (
+          <div>
+            <label className="text-sm text-slate-600">UPI ID</label>
+            <input
+              type="text"
+              placeholder="name@bank"
+              required
+              className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3"
+            />
+          </div>
+        )}
+        {mode === "card" && (
+          <div className="grid grid-cols-1 gap-2">
+            <div>
+              <label className="text-sm text-slate-600">Card number</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="1234 5678 9012 3456"
+                required
+                className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-sm text-slate-600">Expiry</label>
+                <input
+                  type="text"
+                  placeholder="MM/YY"
+                  required
+                  className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-slate-600">CVV</label>
+                <input
+                  type="password"
+                  placeholder="***"
+                  required
+                  className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-slate-600">Name on card</label>
+              <input
+                type="text"
+                placeholder="Full name"
+                required
+                className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3"
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === "net" && (
+          <div>
+            <label className="text-sm text-slate-600">Select bank</label>
+            <select className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3">
+              {["HDFC", "SBI", "ICICI", "Axis", "Kotak"].map((b) => (
+                <option key={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {mode === "wallet" && (
+          <div>
+            <label className="text-sm text-slate-600">Choose wallet</label>
+            <select className="mt-1 w-full h-11 rounded-lg border border-slate-300 px-3">
+              {["Paytm", "PhonePe", "Amazon Pay", "Mobikwik"].map((w) => (
+                <option key={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {mode === "pay" && (
+          <div className="text-sm text-slate-600">
+            Reserve now, pay at the property.
+          </div>
+        )}
+
+        <button className="btn btn-primary w-full h-11" disabled={loading}>
+          {loading ? "Processing…" : `Confirm ₹${price || "--"}`}
+        </button>
+        {status === "success" && (
+          <div className="text-green-600 text-sm">
+            Booking confirmed for {hotelName}!
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
+function GettingThere({ city = "" }) {
+  const suggestions = useMemo(() => {
+    const base = [
+      {
+        icon: "🚕",
+        title: "Cab / Taxi",
+        desc: "Direct ride from airport or station.",
+      },
+      {
+        icon: "🚌",
+        title: "Bus",
+        desc: "Local or intercity buses are frequent.",
+      },
+      {
+        icon: "🚇",
+        title: "Metro / Rail",
+        desc: "Use nearest metro/rail stop then a short cab.",
+      },
+      {
+        icon: "🚶",
+        title: "Walkability",
+        desc: "Short walks for nearby attractions.",
+      },
+    ];
+    const cityAdds = {
+      Jaipur: [
+        {
+          icon: "🛺",
+          title: "Auto rickshaw",
+          desc: "Best for old city lanes.",
+        },
+      ],
+      Goa: [
+        {
+          icon: "🛵",
+          title: "Scooter rental",
+          desc: "Popular for beach hopping.",
+        },
+      ],
+      Agra: [
+        {
+          icon: "🛺",
+          title: "Auto rickshaw",
+          desc: "Easy access to Taj and Fort.",
+        },
+      ],
+      Varanasi: [
+        {
+          icon: "⛵",
+          title: "Boat",
+          desc: "Use ghats for boat rides at sunrise.",
+        },
+      ],
+      Manali: [
+        {
+          icon: "🚐",
+          title: "Shared cab",
+          desc: "For valley transfers and sightseeing.",
+        },
+      ],
+    };
+    return [...base, ...(cityAdds[city] || [])];
+  }, [city]);
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-3">
+      <div className="text-sm font-semibold mb-2">Getting there</div>
+      <ul className="space-y-2">
+        {suggestions.map((s, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+            <span className="text-lg leading-none">{s.icon}</span>
+            <div>
+              <div className="font-semibold">{s.title}</div>
+              <div className="text-slate-500 text-xs">{s.desc}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
