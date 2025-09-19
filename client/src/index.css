@@ -5,7 +5,6 @@
 /* Brand variables */
 :root {
   --brand: #ff5a36; /* accent from earlier theme to keep consistency */
-  --bg: white;
   --text: #0f172a;
 }
 
