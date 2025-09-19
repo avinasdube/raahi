@@ -12,14 +12,18 @@ const Hotels = ({ embedded = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // URL-synced state (declare BEFORE any effects that use it)
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoading(true);
         setError("");
-        const loc = searchParams.get("location") || "";
-        const { data } = await getHotels({ location: loc });
+        const q = searchParams.get("q") || "";
+        const loc = searchParams.get("location") || q;
+        const { data } = await getHotels({ location: loc, q });
         if (!mounted) return;
         setHotelsRaw(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -35,13 +39,18 @@ const Hotels = ({ embedded = false }) => {
     };
   }, [searchParams]);
 
-  // URL-synced state
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Filters state
-  const [selectedPopular, setSelectedPopular] = useState(() =>
-    (searchParams.get("popular") || "").split(",").filter(Boolean)
-  );
+  const [selectedPopular, setSelectedPopular] = useState(() => {
+    const fromUrl = (searchParams.get("popular") || "")
+      .split(",")
+      .filter(Boolean);
+    // if user came from Home with q/city, preselect that as a popular tag
+    if (!fromUrl.length) {
+      const q = searchParams.get("q");
+      if (q) return [q];
+    }
+    return fromUrl;
+  });
   const [selectedCollections, setSelectedCollections] = useState(() =>
     (searchParams.get("collections") || "").split(",").filter(Boolean)
   );
@@ -263,7 +272,7 @@ const Hotels = ({ embedded = false }) => {
           )}
 
           {pageItems.map((h) => (
-            <HotelCard key={h.id} hotel={h} />
+            <HotelCard key={h.id} hotel={h} showMap={false} />
           ))}
 
           {/* Pagination */}
