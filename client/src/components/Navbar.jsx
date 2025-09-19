@@ -42,6 +42,11 @@ const HamburgerIcon = ({ isOpen }) => (
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dark, setDark] = useState(() =>
+    typeof document !== "undefined"
+      ? document.documentElement.classList.contains("dark")
+      : false
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -49,6 +54,18 @@ const Navbar = () => {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Initialize theme from document class (set early in index.html)
+  useEffect(() => {
+    const enabled = document.documentElement.classList.contains("dark");
+    setDark(enabled);
+  }, []);
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("raahi-theme", dark ? "dark" : "light");
+  }, [dark]);
 
   // Close mobile menu on escape key
   useEffect(() => {
@@ -91,9 +108,9 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-6 text-[15px] font-semibold">
           {[
             { to: "/", label: "Home" },
-            { to: "/explore", label: "Explore" },
+            { to: "/explore?tab=stays", label: "Explore" },
+            { to: "/dashboard", label: "Dashboard" },
             { to: "/trips", label: "Trips" },
-            { to: "/saved", label: "Saved" },
             { to: "/planner", label: "Planner" },
             { to: "/safety", label: "Safety" },
             { to: "/budget", label: "Budget" },
@@ -111,6 +128,15 @@ const Navbar = () => {
             </NavLink>
           ))}
           <div className="h-5 w-px bg-slate-200/70" />
+          <button
+            onClick={() => setDark((d) => !d)}
+            className="inline-flex items-center gap-2 text-slate-800 hover:text-[var(--brand)]"
+            aria-label="Toggle dark mode"
+            title="Toggle dark mode"
+          >
+            <span className="hidden lg:inline">{dark ? "Dark" : "Light"}</span>
+            <span aria-hidden>{dark ? "🌙" : "☀️"}</span>
+          </button>
           <Link
             to="/auth"
             className="btn-outline hidden lg:inline-flex text-slate-800"
@@ -148,9 +174,9 @@ const Navbar = () => {
             <div className="flex flex-col space-y-3">
               {[
                 { to: "/", label: "Home" },
-                { to: "/explore", label: "Explore" },
+                { to: "/explore?tab=stays", label: "Explore" },
+                { to: "/dashboard", label: "Dashboard" },
                 { to: "/trips", label: "Trips" },
-                { to: "/saved", label: "Saved" },
                 { to: "/planner", label: "Planner" },
                 { to: "/safety", label: "Safety" },
                 { to: "/budget", label: "Budget" },
@@ -172,6 +198,14 @@ const Navbar = () => {
               ))}
 
               <div className="pt-3 border-t border-slate-200/70">
+                <button
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg border border-slate-300 text-slate-800 hover:bg-slate-50"
+                  onClick={() => setDark((d) => !d)}
+                  aria-label="Toggle dark mode"
+                >
+                  {dark ? "Dark" : "Light"} Mode {dark ? "🌙" : "☀️"}
+                </button>
+
                 <Link
                   to="/auth"
                   className="block w-full text-center py-3 px-4 bg-[var(--brand)] text-white rounded-lg font-semibold hover:bg-[var(--brand)]/90 transition-colors"
