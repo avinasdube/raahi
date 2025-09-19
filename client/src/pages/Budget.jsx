@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { getCurrency } from "../api/api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-
-const rates = { INR: 1, USD: 0.012, EUR: 0.011 }; // mock fx
 
 export default function Budget() {
   const [home, setHome] = useState("INR");
   const [budget, setBudget] = useState(30000);
+  const [rates, setRates] = useState({ INR: 1 });
   const [items, setItems] = useState(() => {
     const saved = localStorage.getItem("raahi.expenses");
     return saved ? JSON.parse(saved) : [];
@@ -16,13 +16,40 @@ export default function Budget() {
     localStorage.setItem("raahi.expenses", JSON.stringify(items));
   }, [items]);
 
+  // Fetch currency rates from backend
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await getCurrency();
+        // Expect an array; pick first or latest entry
+        const row = Array.isArray(data) && data.length ? data[0] : null;
+        const apiRates = row?.rates || {};
+        if (mounted && apiRates && typeof apiRates === "object") {
+          // Normalize to include INR baseline
+          setRates({ INR: 1, ...apiRates });
+        }
+      } catch {
+        // Keep default INR-only rates if API fails
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // If selected home currency is no longer available in fetched rates, reset to INR
+  useEffect(() => {
+    if (!rates[home]) setHome("INR");
+  }, [rates, home]);
+
   const totalINR = useMemo(
     () => items.reduce((sum, it) => sum + (it.amountINR || 0), 0),
     [items]
   );
   const totalHome = useMemo(
     () => Math.round(totalINR * (rates[home] || 1) * 100) / 100,
-    [totalINR, home]
+    [totalINR, home, rates]
   );
   const nearing = totalINR > budget * 0.8;
 
