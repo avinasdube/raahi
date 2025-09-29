@@ -76,7 +76,11 @@ Server (`server/.env`):
 - TOKEN_MAX_AGE_DAYS=7 — Cookie max age
 - LLM_PROVIDER=off — Set to off to disable external LLM calls; or set to e.g. openai
 - LLM_API_KEY=... / OPENAI_API_KEY=... — API key for provider
-- LLM_MODEL=gpt-4o-mini — Model name for provider
+- LLM_MODEL=gpt-4o-mini — Model name for provider (OpenAI)
+  - To use Google Gemini (often free tier):
+    - LLM_PROVIDER=google
+    - LLM_API_KEY=your_gemini_api_key
+    - LLM_MODEL=gemini-1.5-flash (default if omitted)
 - NODE_ENV=development — Environment
 
 Client (`client/.env`):
