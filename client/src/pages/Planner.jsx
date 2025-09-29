@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCrowd, getPOIs, getWeather, postAIPlan } from "../api/api";
+import AIAssistant from "../components/AIAssistant";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { showError, showSuccess } from "../utils/toast";
@@ -23,6 +24,13 @@ export default function Planner() {
   const [aiOutput, setAiOutput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [autoSendKey, setAutoSendKey] = useState(0);
+  const [initKey, setInitKey] = useState(0);
+  const [aiMode, setAiMode] = useState("server"); // 'server' | 'browser'
+  const [browserModel, setBrowserModel] = useState(
+    "Llama-3.1-8B-Instruct-q4f32_1-MLC"
+  );
+  const [aiSource, setAiSource] = useState("");
 
   // Data state
   const [weatherData, setWeatherData] = useState([]);
@@ -114,6 +122,14 @@ export default function Planner() {
 
   // composePrompt removed in server-side AI path
 
+  // Browser AI prompt composed from current selections
+  const browserAIPrompt = useMemo(() => {
+    const interestsStr = interests?.length
+      ? interests.join(", ")
+      : "general sightseeing";
+    return `You are Raahi, an India-first travel assistant. Create a concise ${days}-day itinerary for ${city} in the ${season}. Budget total: ₹${budget} for 2 travelers. Interests: ${interestsStr}. Include day-by-day (morning/afternoon/evening), brief transport tips, and 2 hotel suggestions with indicative price ranges. Keep it practical and friendly.`;
+  }, [city, days, season, budget, interests]);
+
   const formatPlan = (plan) => {
     if (!plan) return "";
     const lines = [];
@@ -158,6 +174,7 @@ export default function Planner() {
       };
       const { data } = await postAIPlan(payload);
       setAiOutput(formatPlan(data));
+      setAiSource("Server (LLM)");
     } catch (err) {
       console.error("AI plan error", err);
       setAiError("Failed to generate plan. Please try again.");
@@ -165,6 +182,13 @@ export default function Planner() {
     } finally {
       setAiLoading(false);
     }
+  };
+
+  const requestBrowserAI = () => {
+    const k = Date.now();
+    setInitKey(k);
+    setTimeout(() => setAutoSendKey(k + 1), 60);
+    setAiSource(`Browser (WebLLM: ${browserModel})`);
   };
 
   const saveTrip = () => {
@@ -362,15 +386,39 @@ export default function Planner() {
                     Baseline plan generated locally without AI
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-sm text-slate-700">
+                    Mode:
+                    <select
+                      value={aiMode}
+                      onChange={(e) => setAiMode(e.target.value)}
+                      className="ml-2 select-control h-11"
+                    >
+                      <option value="server">Server (Gemini/OpenAI)</option>
+                      <option value="browser">Browser (WebLLM)</option>
+                    </select>
+                  </label>
+                  {aiMode === "browser" && (
+                    <label className="text-sm text-slate-700">
+                      Model:
+                      <input
+                        value={browserModel}
+                        onChange={(e) => setBrowserModel(e.target.value)}
+                        className="ml-2 h-11 w-[320px] border border-slate-300 rounded-lg px-3"
+                        title="WebLLM model name"
+                      />
+                    </label>
+                  )}
                   <button
-                    onClick={requestServerAI}
+                    onClick={
+                      aiMode === "server" ? requestServerAI : requestBrowserAI
+                    }
                     className="h-11 px-4 rounded-xl bg-[var(--brand)] text-white"
                     disabled={aiLoading}
                     aria-busy={aiLoading}
                     aria-describedby="ai-status"
                   >
-                    {aiLoading ? "Generating…" : "Ask AI to refine plan"}
+                    {aiLoading ? "Generating…" : "Generate with AI"}
                   </button>
                   <button
                     type="button"
@@ -413,36 +461,50 @@ export default function Planner() {
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-card overflow-hidden">
-                {/* Preserving layout: keep AI panel placeholder without in-browser model */}
-                <div className="p-4 border-b border-slate-100">
-                  <div className="text-lg font-semibold">AI Assistant</div>
-                  <div className="text-xs text-slate-500">
-                    Server-side AI plans when available. No WebGPU required.
-                  </div>
-                  {aiError && (
-                    <div className="mt-2 text-xs text-red-600" role="alert">
-                      {aiError}
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-lg font-semibold">AI Assistant</div>
+                    <div className="text-xs text-slate-500">
+                      In-browser model (WebLLM). Private and runs locally.
                     </div>
-                  )}
+                  </div>
+                  <button
+                    type="button"
+                    className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm"
+                    title="Initialize the in-browser AI model"
+                    onClick={() => {
+                      const k = Date.now();
+                      setInitKey(k);
+                    }}
+                  >
+                    Initialize
+                  </button>
                 </div>
-                <div
-                  id="ai-status"
-                  className="p-4 text-sm text-slate-700"
-                  role="status"
-                  aria-live="polite"
-                >
-                  {aiLoading
-                    ? "Contacting AI…"
-                    : "Click the button to generate a tailored itinerary."}
-                </div>
+                <AIAssistant
+                  prefill={`Plan a ${days}-day trip to ${city} with a budget of ₹${budget}.`}
+                  prompt={browserAIPrompt}
+                  autoSendKey={autoSendKey}
+                  initKey={initKey}
+                  modelName={browserModel}
+                  onResponse={(text) => {
+                    setAiOutput(text);
+                    setAiSource(`Browser (WebLLM: ${browserModel})`);
+                  }}
+                />
+                {aiError && (
+                  <div className="px-4 pb-3 text-xs text-red-600" role="alert">
+                    {aiError}
+                  </div>
+                )}
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
                 <div className="text-lg font-semibold mb-2">
                   AI itinerary (experimental)
                 </div>
                 <div className="text-sm text-slate-500 mb-3">
-                  Powered by server-side AI (if configured). Falls back to a
-                  local heuristic plan.
+                  {aiSource
+                    ? `Generated by ${aiSource}.`
+                    : "Powered by server AI (if configured) or your browser AI. Falls back to a local heuristic plan."}
                 </div>
                 <div className="prose prose-slate max-w-none">
                   <pre
@@ -450,7 +512,7 @@ export default function Planner() {
                     aria-live="polite"
                   >
                     {aiOutput ||
-                      'Click "Ask AI to refine plan" above to generate a tailored itinerary.'}
+                      'Choose a mode and click "Generate with AI" to create a tailored itinerary.'}
                   </pre>
                 </div>
               </div>
