@@ -42,10 +42,38 @@ export async function callLLMWithPlanPrompt({
         const content = data?.choices?.[0]?.message?.content;
         return { ok: true, content, provider: "openai" };
       }
+      case "google": {
+        // Google Gemini via REST API
+        // Docs: https://ai.google.dev/api/rest/v1/models.generateContent
+        if (!apiKey) return { ok: false, reason: "no_api_key" };
+        const m = model || "gemini-1.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
+          m
+        )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const contents = [
+          system ? { role: "user", parts: [{ text: system }] } : null,
+          { role: "user", parts: [{ text: prompt }] },
+        ].filter(Boolean);
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents,
+            generationConfig: { temperature: 0.7 },
+          }),
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          return { ok: false, reason: `http_${resp.status}`, details: text };
+        }
+        const data = await resp.json();
+        const parts = data?.candidates?.[0]?.content?.parts || [];
+        const text = parts.map((p) => p?.text || "").join("");
+        return { ok: true, content: text, provider: "google" };
+      }
       // Placeholders for additional providers; return off until configured
       case "anthropic":
       case "mistral":
-      case "google":
       case "azure-openai":
         return { ok: false, reason: "provider_not_implemented" };
       default:
