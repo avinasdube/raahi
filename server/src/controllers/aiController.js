@@ -183,7 +183,23 @@ export async function planTrip(req, res) {
     let plan;
     if (content) {
       try {
-        plan = JSON.parse(content);
+        let txt = String(content).trim();
+        // Remove markdown code fences if present
+        if (txt.startsWith("```")) {
+          txt = txt
+            .replace(/^```(?:json)?/i, "")
+            .replace(/```$/i, "")
+            .trim();
+        }
+        // Find first JSON object or array start
+        const firstBrace = txt.indexOf("{");
+        const firstBracket = txt.indexOf("[");
+        const idxs = [firstBrace, firstBracket].filter((i) => i >= 0);
+        if (idxs.length) {
+          const start = Math.min(...idxs);
+          if (start > 0) txt = txt.slice(start);
+        }
+        plan = JSON.parse(txt);
       } catch (e) {
         plan = deterministicPlan({
           city,
@@ -214,11 +230,9 @@ export async function planTrip(req, res) {
     return res.json(plan);
   } catch (err) {
     console.error("planTrip error", err);
-    return res
-      .status(500)
-      .json({
-        message: "Failed to generate plan",
-        error: String(err?.message || err),
-      });
+    return res.status(500).json({
+      message: "Failed to generate plan",
+      error: String(err?.message || err),
+    });
   }
 }
