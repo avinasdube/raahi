@@ -1,173 +1,142 @@
-# Raahi – Full Stack Monorepo (Client + Server)
+# Raahi – Full Stack Travel Assistant
 
-Raahi is an India-first travel experience combining a modern React frontend and a Node/Express API. It offers hotel discovery, AI-assisted trip planning, a tourism marketplace, safety utilities, and more.
+Raahi blends a modern React experience with an Express/MongoDB backend to help travellers explore India. Out of the box you get curated hotel discovery, marketplace listings, budgeting tools, safety references, and an AI-powered trip planner that can call Google Gemini or other LLMs.
 
-This README covers the entire project: architecture, setup, environment variables, scripts (including a single command to run both apps), APIs, and troubleshooting.
+This README covers the monorepo layout, local setup, configuration, AI integration, deployment pointers, and day‑to‑day commands.
 
-## Stack Overview
+## Tech Stack
 
-- Client: React 19 + Vite 7 + Tailwind CSS 4, React Router, Axios
-- Server: Node.js + Express 5, Mongoose 8 (MongoDB), JWT auth, CORS
-- AI: Optional LLM provider (OpenAI-compatible) or deterministic fallback; in-browser WebLLM assistant on the client
-- Tooling: npm workspaces, concurrently
+- **Client**: React 19, Vite 7, React Router, Tailwind CSS 4, Axios, WebLLM (client-side assistant)
+- **Server**: Node.js + Express 5, Mongoose 8 (MongoDB), JWT auth, cookie sessions, hardened CORS
+- **AI services**: Pluggable LLM bridge (`server/src/services/aiProvider.js`) with Google Gemini, OpenAI, or deterministic fallbacks
+- **Tooling**: npm workspaces, ESLint, nodemon, modern ES modules
 
-## Project Structure
+## Repository Layout
 
-- client/ — React app (Vite)
-- server/ — Express API + MongoDB
-- server/src/scripts/exportToCSV.js — Utility to export seed data to CSV
+```text
+client/            # Vite React SPA
+  src/             # Pages, components, hooks, API clients
+  public/          # Static assets (add _redirects here for SPAs)
+  vite.config.js
 
-Key entry points:
+server/            # Express API
+  src/index.js     # App entry (Express 5)
+  src/controllers/ # REST controllers
+  src/models/      # Mongoose models
+  src/services/    # AI provider + helpers
+  src/scripts/     # Seed/CSV utilities
 
-- Client dev server: `client/vite.config.js` (default port 5173)
-- Server app: `server/src/index.js` (default port 8800)
-
-## Quick Start
-
-Prerequisites:
-
-- Node.js 18+ (LTS recommended)
-- MongoDB instance (local or Atlas)
-
-1) Install dependencies at the repo root (uses npm workspaces):
-
-```bash
-npm install
+package.json       # npm workspaces + shared scripts
 ```
 
-1. Configure environment variables:
+## Getting Started
 
-- Copy `server/.env.example` to `server/.env` and update values (MongoDB URI, JWT secret, etc.).
-- (Optional) Copy `client/.env.example` to `client/.env` if you want to override API URL.
+1. **Install dependencies** (workspace-aware):
 
-1. Start both client and server together (single command):
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-```
+2. **Configure environment variables**:
+   - Copy `server/.env.example` → `server/.env` and set Mongo URI, JWT secret, optional LLM settings, etc.
+   - (Optional) Copy `client/.env.example` → `client/.env` to override `VITE_API_BASE_URL` or feature flags.
 
-- Client runs at <http://localhost:5173> (Vite)
-- Server runs at <http://localhost:8800> (Express)
+3. **Run the apps** (two terminals recommended):
+   - Client: `npm run dev` (alias for `npm run dev:client`)
+   - Server: `npm run dev:server`
 
-Tip: The server CORS defaults already allow localhost:5173 and 3000. Adjust `CORS_ORIGIN` in `server/.env` if needed.
+   Default ports are 5173 (client) and 8800 (API). CORS is pre-configured to accept localhost origins and any domains listed in `CORS_ORIGIN`.
 
-## Scripts (root)
+## Useful Scripts
 
-- dev — Run client and server concurrently
-- seed — Run server seeding script (`server/src/seed.js`)
-- export:csv — Export demo data to CSV (`server/src/scripts/exportToCSV.js`)
-- build — Build the client for production
-- preview — Preview the built client locally
+| Location | Script | Purpose |
+| --- | --- | --- |
+| root | `npm run dev` | Start the Vite client (front-end only). |
+| root | `npm run dev:server` | Start the Express API via the server workspace. |
+| root | `npm run build-client` | Production build of the React app (outputs `client/dist`). |
+| root | `npm run seed` | Seed MongoDB with demo data (`server/src/seed.js`). |
+| root | `npm run export:csv` | Export sample data to CSV (`server/src/scripts/exportToCSV.js`). |
+| client | `npm run lint` | Run ESLint on the React app. |
+| server | `npm run start` | Nodemon-powered API server (watch mode). |
 
-You can still run workspace scripts directly:
+All workspace scripts can be executed through the root by prefixing with `npm run <script> --workspace <name>`.
 
-- Client: `npm run dev --workspace client`
-- Server: `npm run start --workspace server`
+## Configuration & Environment Variables
 
-## Environment Variables
+**Server (`server/.env`)**
 
-Server (`server/.env`):
+| Variable | Description |
+| --- | --- |
+| `PORT` | API port (default 8800). |
+| `CORS_ORIGIN` | Comma-separated whitelist of frontend origins. Localhost/127.0.0.1 are always allowed. |
+| `MONGODB_URI` | MongoDB connection string. |
+| `JWT_SECRET`, `TOKEN_EXPIRES_IN`, `TOKEN_MAX_AGE_DAYS` | Auth token configuration. |
+| `NODE_ENV` | `development` or `production`. |
+| `LLM_PROVIDER` | `off`, `google`, `openai`, etc. Controls the AI provider. |
+| `LLM_API_KEY` / `OPENAI_API_KEY` | API key used by the selected provider. |
+| `LLM_MODEL` | Model identifier (e.g. `gemini-1.5-flash`, `gpt-4o-mini`). |
 
-- PORT=8800 — API port
-- CORS_ORIGIN=<http://localhost:5173>,<http://127.0.0.1:5173>,<http://localhost:3000> — Allowed origins
-- MONGODB_URI=... — MongoDB connection string
-- JWT_SECRET=... — Secret for signing JWTs
-- TOKEN_EXPIRES_IN=7d — JWT expiry
-- TOKEN_MAX_AGE_DAYS=7 — Cookie max age
-- LLM_PROVIDER=off — Set to off to disable external LLM calls; or set to e.g. openai
-- LLM_API_KEY=... / OPENAI_API_KEY=... — API key for provider
-- LLM_MODEL=gpt-4o-mini — Model name for provider (OpenAI)
-  - To use Google Gemini (often free tier):
-    - LLM_PROVIDER=google
-    - LLM_API_KEY=your_gemini_api_key
-    - LLM_MODEL=gemini-1.5-flash (default if omitted)
-- NODE_ENV=development — Environment
+**Client (`client/.env`)**
 
-Client (`client/.env`):
+| Variable | Description |
+| --- | --- |
+| `VITE_API_BASE_URL` | Overrides the API base. Defaults are defined in `client/src/utils/index.js`. |
+| `VITE_ENABLE_AI_ASSISTANT` | Optional flag for the WebLLM sidebar. |
 
-- VITE_API_BASE_URL=<http://localhost:8800/api> — API base. If not set, the client uses sensible defaults (see `client/src/utils/index.js`).
+## AI Trip Planner & Gemini Usage
 
-## Client App Highlights
+The API endpoint `POST /api/ai/plan` delegates to `callLLMWithPlanPrompt` in `server/src/services/aiProvider.js`. The service:
 
-- Elegant UI with Tailwind, responsive and accessible patterns
-- Hotels catalogue with filters, sorting, and pagination on sample data
-- Planner with AI itinerary suggestions
-- Marketplace for stays/experiences/guides/shops (mocked data)
-- Safety utilities (helplines, alerts, nearby facilities – mock)
-- Budget tracking and currency conversion (mock)
+- Accepts a `provider`, `apiKey`, and `model` from environment variables.
+- When `LLM_PROVIDER=google`, it invokes Google Gemini through the official REST endpoint `models.generateContent`, sending the prompt and optional system message. The helper automatically sets sensible defaults like temperature and collects the text parts from the response.
+- If the provider is `off`, missing, or fails, the controller falls back to a deterministic heuristic planner so the feature still returns useful itineraries.
 
-Key files:
+On the client, the AI assistant widget can also run locally via WebLLM for quick Q&A without hitting external APIs.
 
-- `client/src/pages/*` — Pages such as Home, Hotels, Planner, Marketplace, Safety, Budget, Auth, etc.
-- `client/src/api/api.js` — Axios-based API client using `API_BASE_URL` from `client/src/utils/index.js`
-- `client/src/utils/index.js` — Central config for API base URL and endpoints
+## REST API Snapshot
 
-Development:
+- `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/logout`, `GET /api/auth/me`, `PUT /api/auth/update`
+- `GET /api/hotels`, `GET /api/hotels/:id`
+- `GET /api/pois`, `GET /api/pois/:city`
+- `GET /api/weather`, `GET /api/crowd`, `GET /api/currency`
+- `POST /api/ai/plan` (uses the AI provider described above)
 
-- `npm run dev` at root runs Vite and the server together.
-- The client uses `withCredentials` where applicable.
+Responses commonly include JWT cookies (`HttpOnly`, `SameSite` managed dynamically). CORS is enforced via middleware that honours the whitelist and gracefully denies unknown origins.
 
-## Server API Overview
+## Data Utilities
 
-Base URLs:
+- `npm run seed` populates MongoDB with sample hotels, POIs, weather, crowd, and currency documents.
+- `npm run export:csv` generates CSV exports in `server/src/exports/` for analytics or spreadsheet use.
 
-- Local: <http://localhost:8800/api>
-- Prod: <https://raahi-server.onrender.com/api>
+## Deployment Guide (Generalised)
 
-Auth
+### Client (Static Hosting)
 
-- POST /auth/signup — Body: { name or fullName, email, password } → { user, token } + cookie
-- POST /auth/login — Body: { email, password } → { user, token } + cookie
-- GET /auth/logout — Clears cookie
-- GET /auth/me — Returns current user (requires auth)
-- PUT /auth/update — Update name and/or password (requires auth)
+1. Build: `npm run build-client` → assets in `client/dist`.
+2. Deploy `client/dist` to any static host (Render, Netlify, Vercel, S3, etc.).
+3. For client-side routing, add a `_redirects` file under `client/public` with `/* /index.html 200` so deep links resolve correctly.
+4. Set environment variables (e.g. `VITE_API_BASE_URL`) in your hosting provider, then trigger a rebuild.
 
-Data
+### Server (Node Hosting)
 
-- GET /weather — All weather rows
-- GET /crowd — Crowd data
-- GET /currency — Currency rows
-- GET /hotels — Hotels (optionally filter via query params like `location`)
-- GET /hotels/:id — Hotel by id
-- GET /pois — All POIs
-- GET /pois/:city — POIs for a given city
-
-AI
-
-- POST /ai/plan — Generates a trip plan
-  - Body: { city, startDate?, days, travelers?, interests?, budget?, constraints?, season? }
-  - Uses deterministic fallback if external LLM is disabled or fails
-
-CORS & Cookies
-
-- CORS allows local development origins by default; customize with `CORS_ORIGIN`.
-- Cookies are `SameSite=None; Secure` in production. In development, `SameSite=Lax`.
-
-## Seeding and CSV Export
-
-- Seed DB: `npm run seed` from the repo root (runs `server/src/seed.js`). Ensure `MONGODB_URI` is set.
-- Export CSVs: `npm run export:csv` from the repo root. Outputs to `server/src/exports/*.csv`.
-
-## Deployment Notes
-
-- Client build: `npm run build` (output in `client/dist`)
-- Serve client from a static host or CDN. Update `API_BASE_URL`/`VITE_API_BASE_URL` to point to your deployed API.
-- Server: Provide `MONGODB_URI`, `JWT_SECRET`, and `CORS_ORIGIN` to match your client domain(s). Ensure HTTPS in production for cookies.
+1. Provision a Node 18+ runtime with access to MongoDB.
+2. Copy `server` folder or deploy via repo + workspace install: `npm install --workspace server`.
+3. Run `npm run start --workspace server` (production) or wrap with a process manager (PM2, systemd).
+4. Ensure `CORS_ORIGIN` lists your static-site domain and that the service uses HTTPS for secure cookies.
 
 ## Troubleshooting
 
-- Server won’t start: Check `MONGODB_URI` and that MongoDB is reachable. Review logs for connection errors in `server/src/config/dbConfig.js`.
-- CORS errors: Ensure the browser origin is present in `CORS_ORIGIN` and that the client requests use the correct base URL.
-- Auth cookie not set in dev: Use http:// (not https) for localhost; in production, ensure HTTPS and `SameSite=None`.
-- AI planner returns deterministic results: That’s expected when `LLM_PROVIDER=off` or the provider fails. Provide `LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL` to enable remote LLMs.
-- WebLLM model loading is slow: First load downloads and compiles the model; subsequent loads are cached by the browser. Prefer modern Chrome/Edge with WebGPU enabled.
+- **CORS blocked**: Verify the frontend origin is included in `CORS_ORIGIN`. Localhost and 127.0.0.1 are auto-permitted.
+- **Auth cookie missing**: Use the same protocol/domain as configured. Production must be HTTPS for `SameSite=None`.
+- **AI planner returns fallback data**: Confirm `LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL` are set. Check provider dashboards for quota errors.
+- **`dist` missing during deploy**: Always run `npm run build-client` and deploy the resulting `client/dist` folder, not the raw source.
 
 ## Contributing
 
-- Use feature branches off `dev`.
-- Keep PRs focused and include a brief description.
-- Run the app locally with `npm run dev` and verify affected pages.
+- Branch from `dev` and keep PRs focused.
+- Run `npm run dev` and `npm run dev:server` locally before opening a pull request.
+- Use meaningful commit messages and update documentation/tests when behaviour changes.
 
 ---
 
-Enjoy exploring Raahi, and feel free to open issues or suggest enhancements.
+Enjoy exploring Raahi and feel free to open issues or feature suggestions!
