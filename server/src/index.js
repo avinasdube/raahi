@@ -13,13 +13,8 @@ dotenv.config({
 const app = express();
 
 const PORT = process.env.PORT || 8800;
-const corsEnv = process.env.CORS_ORIGIN;
-const allowedOrigins = corsEnv
-  ? corsEnv.split(",").map((o) => o.trim())
-  : [
-      "http://localhost:5173", // Vite default
-      "https://raahii.onrender.com"
-    ];
+const corsEnv = process.env.CORS_ORIGIN.split(',');;
+const allowedOrigins = corsEnv;
 
 // CORS
 const corsOptions = {
