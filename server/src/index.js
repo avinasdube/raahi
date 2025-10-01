@@ -17,8 +17,8 @@ const corsEnv = process.env.CORS_ORIGIN;
 const allowedOrigins = corsEnv
   ? corsEnv.split(",").map((o) => o.trim())
   : [
-      "http://localhost:3000",
       "http://localhost:5173", // Vite default
+      "https://raahii.onrender.com"
     ];
 
 // CORS
