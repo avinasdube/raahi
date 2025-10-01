@@ -83,7 +83,6 @@ export default function Auth() {
           password: form.password,
         });
         const ok = res?.status === 200 || res?.status === 201;
-        console.log(res.data);
         if (!ok) throw new Error(res?.data?.message || "Login failed");
         // Persist token for Authorization header fallback and set user in context
         try {
